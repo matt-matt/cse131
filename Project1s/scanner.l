@@ -57,12 +57,10 @@ int currentLineNum, currentColNum;
   * entries in the Rules section later. 
   */
 
+LINECOMMENT "//".*[\n]
 BOOLEAN     (true|false)
-IDENTIFIER  ([A-Z]|[a-z])([A-Z]|[a-z]|[0-9])*
-FIELDSELECT {IDENTIFIER}.({IDENTIFIER}.)*{IDENTIFIER}
-COMMENT     ["/*"]*["*/"]
-OPENCOMMENT ["/*"]*
-LINECOMMENT //*[\n]
+IDENTIFIER  ([A-Z]|[a-z])([A-Z]|[a-z]|[0-9]|_)*
+
 
 DIGITSEQ   (([1-9][0-9]*)|[0])
 
@@ -74,7 +72,7 @@ FLOAT	   (({FRACTIONAL}{EXPO}?[f|F]?)|({DIGITSEQ}{EXPO}[f|F]?))
 
 
 
-%x ML_COMMENT
+%x ML_COMMENT DOT FIELD_OPT
 
 
 %%             /* BEGIN RULES SECTION */
@@ -82,11 +80,17 @@ FLOAT	   (({FRACTIONAL}{EXPO}?[f|F]?)|({DIGITSEQ}{EXPO}[f|F]?))
   * %% markers which delimit the Rules section. 
   */ 
 
-{COMMENT}           
-{OPENCOMMENT}       {}
-{LINECOMMENT}       {currentLineNum++; currentColNum = 1;}
+"/*"                    {BEGIN(ML_COMMENT);}
+<ML_COMMENT>"\n"        {currentLineNum++; currentColNum = 1;}
+<ML_COMMENT>[^\n]*"*/"  {BEGIN(INITIAL);}
+<ML_COMMENT>[^*\n]*     
+<ML_COMMENT>"*"+[^*/\n]*  
+<ML_COMMENT><<EOF>>     {ReportError::UntermComment();}    
 
-[\n]		{currentLineNum++; currentColNum = 1;}
+{LINECOMMENT}           {currentLineNum++; currentColNum = 1;}
+[ ]
+[\t]                    {currentColNum += 8 - currentColNum % 8;}
+[\n]		            {currentLineNum++; currentColNum = 1;}
 
 void 		        {return T_Void;}
 bool 		        {return T_Bool;}
@@ -126,11 +130,9 @@ case                {return T_Case;}
 default             {return T_Default;}
 {BOOLEAN}           {yylval.boolConstant = strdup(yytext);
                      return T_BoolConstant;}
-
+<FIELD_OPT>{IDENTIFIER} {BEGIN(INITIAL); return T_FieldSelection;}
 {IDENTIFIER}        {memcpy(yylval.identifier, strndup(yytext, MaxIdentLen+1), sizeof(yylval.identifier));
                      return T_Identifier;}
-
-{FIELDSELECT}       {return T_FieldSelection;}
 
 {FLOAT}		{return T_FloatConstant;}
 
@@ -173,6 +175,8 @@ default             {return T_Default;}
 [{]		{return T_LeftBrace;}
 
 [}]		{return T_RightBrace;}
+
+[.]	    {BEGIN(FIELD_OPT); return T_Dot;}
 
 [.]		{return T_Dot;}
 
