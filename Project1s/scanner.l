@@ -132,11 +132,11 @@ default             {return T_Default;}
 
 {FIELDSELECT}       {return T_FieldSelection;}
 
-{FLOAT}		{return T_FloatConstant;}
+{FLOAT}		{yylval.floatConstant = strtod(yytext, NULL); return T_FloatConstant;}
 
-{DIGITSEQ}[u|U]	{return T_UintConstant;}
+{DIGITSEQ}[u|U]	{yylval.integerConstant = strtol(yytext, NULL, 10); return T_UintConstant;}
 
-{DIGITSEQ}	{return T_IntConstant;}
+{DIGITSEQ}	{yylval.integerConstant = strtol(yytext, NULL, 10); return T_IntConstant;}
 
 [+][+]		{return T_Inc;}
 
