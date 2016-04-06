@@ -130,7 +130,7 @@ return              {return T_Return;}
 switch              {return T_Switch;}
 case                {return T_Case;}
 default             {return T_Default;}
-{BOOLEAN}           {yylval.boolConstant = strdup(yytext);
+{BOOLEAN}           {yylval.boolConstant = strcmp(yytext, "false");
                      return T_BoolConstant;}
 <FIELD_OPT>{IDENTIFIER} {if (strlen(yytext) > 1023) ReportError::LongIdentifier(&yylloc, yytext);
                         yy_pop_state(); return T_FieldSelection;}
@@ -232,7 +232,7 @@ default             {return T_Default;}
 void InitScanner()
 {
     PrintDebug("lex", "Initializing scanner");
-    yy_flex_debug = true;
+    yy_flex_debug = false;
     currentLineNum = 1;
     currentColNum = 1;
 }
