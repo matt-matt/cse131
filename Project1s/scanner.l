@@ -57,6 +57,8 @@ int currentLineNum, currentColNum;
   * entries in the Rules section later. 
   */
 
+%option stack
+
 LINECOMMENT "//".*[\n]
 BOOLEAN     (true|false)
 IDENTIFIER  ([A-Z]|[a-z])([A-Z]|[a-z]|[0-9]|_)*
@@ -80,12 +82,12 @@ FLOAT	   (({FRACTIONAL}{EXPO}?[f|F]?)|({DIGITSEQ}{EXPO}[f|F]?))
   * %% markers which delimit the Rules section. 
   */ 
 
-"/*"                    {BEGIN(ML_COMMENT);}
+"/*"                    {yy_push_state(ML_COMMENT);}
 <ML_COMMENT>"\n"        {currentLineNum++; currentColNum = 1;}
-<ML_COMMENT>[^\n]*"*/"  {BEGIN(INITIAL);}
+<ML_COMMENT>[^\n]*"*/"  {yy_pop_state(); yy_pop_state();}
 <ML_COMMENT>[^*\n]*     
 <ML_COMMENT>"*"+[^*/\n]*  
-<ML_COMMENT><<EOF>>     {ReportError::UntermComment();}    
+<ML_COMMENT><<EOF>>     {ReportError::UntermComment(); return 0;}    
 
 {LINECOMMENT}           {currentLineNum++; currentColNum = 1;}
 [ ]
@@ -199,6 +201,8 @@ default             {return T_Default;}
 [>]		{return T_RightAngle;}
 
 [?]		{return T_Question;}
+
+.       {ReportError::UnrecogChar(&yylloc, *yytext);}
 
                      
 
