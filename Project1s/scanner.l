@@ -82,17 +82,17 @@ FLOAT	   (({FRACTIONAL}{EXPO}?[f|F]?)|({DIGITSEQ}{EXPO}[f|F]?))
   * %% markers which delimit the Rules section. 
   */ 
 
-"/*"                    {yy_push_state(ML_COMMENT);}
+<INITIAL,FIELD_OPT>"/*"                    {yy_push_state(ML_COMMENT);}
 <ML_COMMENT>"\n"        {currentLineNum++; currentColNum = 1;}
-<ML_COMMENT>[^\n]*"*/"  {yy_pop_state(); yy_pop_state();}
+<ML_COMMENT>[^\n]*"*/"  {yy_pop_state();}
 <ML_COMMENT>[^*\n]*     
 <ML_COMMENT>"*"+[^*/\n]*  
 <ML_COMMENT><<EOF>>     {ReportError::UntermComment(); return 0;}    
 
-{LINECOMMENT}           {currentLineNum++; currentColNum = 1;}
-[ ]
-[\t]                    {currentColNum += 8 - currentColNum % 8;}
-[\n]		            {currentLineNum++; currentColNum = 1;}
+<INITIAL,FIELD_OPT>{LINECOMMENT}           {currentLineNum++; currentColNum = 1;}
+<INITIAL,FIELD_OPT>[ ]
+<INITIAL,FIELD_OPT>[\t]                    {currentColNum += 8 - currentColNum % 8;}
+<INITIAL,FIELD_OPT>[\n]		            {currentLineNum++; currentColNum = 1;}
 
 void 		        {return T_Void;}
 bool 		        {return T_Bool;}
@@ -132,8 +132,11 @@ case                {return T_Case;}
 default             {return T_Default;}
 {BOOLEAN}           {yylval.boolConstant = strdup(yytext);
                      return T_BoolConstant;}
-<FIELD_OPT>{IDENTIFIER} {BEGIN(INITIAL); return T_FieldSelection;}
-{IDENTIFIER}        {memcpy(yylval.identifier, strndup(yytext, MaxIdentLen+1), sizeof(yylval.identifier));
+<FIELD_OPT>{IDENTIFIER} {if (strlen(yytext) > 1023) ReportError::LongIdentifier(&yylloc, yytext);
+                        yy_pop_state(); return T_FieldSelection;}
+
+{IDENTIFIER}        {if (strlen(yytext) > 1023)  ReportError::LongIdentifier(&yylloc, yytext);
+                     memcpy(yylval.identifier, strndup(yytext, MaxIdentLen), sizeof(yylval.identifier));
                      return T_Identifier;}
 
 {FLOAT}		{yylval.floatConstant = strtod(yytext, NULL); return T_FloatConstant;}
@@ -178,9 +181,7 @@ default             {return T_Default;}
 
 [}]		{return T_RightBrace;}
 
-[.]	    {BEGIN(FIELD_OPT); return T_Dot;}
-
-[.]		{return T_Dot;}
+[.]	    {yy_push_state(FIELD_OPT); return T_Dot;}
 
 [:]		{return T_Colon;}
 
