@@ -90,9 +90,9 @@ FLOAT	   (({FRACTIONAL}{EXPO}?[f|F]?)|({DIGITSEQ}{EXPO}[f|F]?))
 <ML_COMMENT><<EOF>>     {ReportError::UntermComment(); return 0;}    
 
 <INITIAL,FIELD_OPT>{LINECOMMENT}           {currentLineNum++; currentColNum = 1;}
-<INITIAL,FIELD_OPT>[ ]
-<INITIAL,FIELD_OPT>[\t]                    {currentColNum += 8 - currentColNum % 8;}
-<INITIAL,FIELD_OPT>[\n]		            {currentLineNum++; currentColNum = 1;}
+<INITIAL,FIELD_OPT>[ ]			   {}
+<INITIAL,FIELD_OPT>[\t]                    {currentColNum += 8 - ((currentColNum-1) % 8);}
+<INITIAL,FIELD_OPT>[\n]		           {currentLineNum++; currentColNum = 1;}
 
 void 		        {return T_Void;}
 bool 		        {return T_Bool;}
@@ -108,7 +108,6 @@ bvec4 		        {return T_Bvec4;}
 uvec2 		        {return T_Uvec2;}
 uvec3 		        {return T_Uvec3;}
 uvec4 		        {return T_Uvec4;}
-
 vec2 		        {return T_Vec2;}
 vec3 		        {return T_Vec3;}
 vec4 		        {return T_Vec4;}
@@ -116,7 +115,7 @@ mat2 		        {return T_Mat2;}
 mat3 		        {return T_Mat3;}
 mat4 		        {return T_Mat4;}
 struct 		        {return T_Struct;}
-in 		            {return T_Struct;}
+in 		        {return T_Struct;}
 out 		        {return T_Struct;}
 const               {return T_Const;}
 uniform             {return T_Uniform;}
@@ -181,7 +180,7 @@ default             {return T_Default;}
 
 [}]		{return T_RightBrace;}
 
-[.]	    {yy_push_state(FIELD_OPT); return T_Dot;}
+[.]	        {yy_push_state(FIELD_OPT); return T_Dot;}
 
 [:]		{return T_Colon;}
 
