@@ -43,7 +43,8 @@ struct yyltype yylloc; // manually dclared for pp1, later Yacc provides
  * be called once for each pattern scanned from the file, before
  * executing its action.
  */
-static void DoBeforeEachAction(); 
+static void DoBeforeEachAction();
+static int LAST_STATE;
 #define YY_USER_ACTION DoBeforeEachAction();
 
 int currentLineNum, currentColNum;
@@ -74,8 +75,8 @@ FLOAT	   (({FRACTIONAL}{EXPO}?[f|F]?)|({DIGITSEQ}{EXPO}[f|F]?))
 
 
 
-%x ML_COMMENT DOT FIELD_OPT
-
+%x ML_COMMENT
+%s FIELD_OPT
 
 %%             /* BEGIN RULES SECTION */
  /* All patterns and actions should be placed between the start and stop
@@ -132,7 +133,7 @@ default             {return T_Default;}
 {BOOLEAN}           {yylval.boolConstant = strcmp(yytext, "false");
                      return T_BoolConstant;}
 <FIELD_OPT>{IDENTIFIER} {if (strlen(yytext) > 1023) ReportError::LongIdentifier(&yylloc, yytext);
-                        yy_pop_state(); return T_FieldSelection;}
+                        yy_pop_state(); LAST_STATE = YY_START; return T_FieldSelection;}
 
 {IDENTIFIER}        {if (strlen(yytext) > 1023)  ReportError::LongIdentifier(&yylloc, yytext);
                      memcpy(yylval.identifier, strndup(yytext, MaxIdentLen), sizeof(yylval.identifier));
@@ -250,4 +251,8 @@ static void DoBeforeEachAction()
     yylloc.first_column = currentColNum;
     yylloc.last_column = currentColNum + yyleng - 1;
     currentColNum += yyleng;
+    if (LAST_STATE == FIELD_OPT)    {
+        yy_pop_state();
+    }
+    LAST_STATE = YY_START;
 }
