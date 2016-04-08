@@ -12,6 +12,7 @@
  */
 
 #include <string.h>
+#include <iostream>
 #include "scanner.h"
 #include "utility.h" // for PrintDebug()
 #include "errors.h"
@@ -26,7 +27,7 @@
  */
 YYSTYPE yylval;  // manually declared for pp1, later Yacc provides
 
-/* Global variable: yylloc
+/* Global variable: yylloc  
  * -----------------------
  * This global variable is how we get position information about the token
  * just scanned to the client. (Operates similarly to yylval above)
@@ -83,17 +84,16 @@ FLOAT	   (({FRACTIONAL}{EXPO}?[f|F]?)|({DIGITSEQ}{EXPO}[f|F]?))
   * %% markers which delimit the Rules section. 
   */ 
 
+<INITIAL,FIELD_OPT,ML_COMMENT>[ ]			   {}
+<INITIAL,FIELD_OPT,ML_COMMENT>[\t]                    {currentColNum += 8 - ((currentColNum-1) % 8);}
+<INITIAL,FIELD_OPT,ML_COMMENT>[\n]		           {currentLineNum++; currentColNum = 1;}
+<INITIAL,FIELD_OPT>{LINECOMMENT}           {currentLineNum++; currentColNum = 1;}
 <INITIAL,FIELD_OPT>"/*"                    {yy_push_state(ML_COMMENT);}
-<ML_COMMENT>"\n"        {currentLineNum++; currentColNum = 1;}
-<ML_COMMENT>[^\n]*"*/"  {yy_pop_state();}
 <ML_COMMENT>[^*\n]*     
 <ML_COMMENT>"*"+[^*/\n]*  
+<ML_COMMENT>"*/"  {yy_pop_state();}
 <ML_COMMENT><<EOF>>     {ReportError::UntermComment(); return 0;}    
 
-<INITIAL,FIELD_OPT>{LINECOMMENT}           {currentLineNum++; currentColNum = 1;}
-<INITIAL,FIELD_OPT>[ ]			   {}
-<INITIAL,FIELD_OPT>[\t]                    {currentColNum += 8 - ((currentColNum-1) % 8);}
-<INITIAL,FIELD_OPT>[\n]		           {currentLineNum++; currentColNum = 1;}
 
 void 		        {return T_Void;}
 bool 		        {return T_Bool;}
@@ -135,7 +135,7 @@ default             {return T_Default;}
 <FIELD_OPT>{IDENTIFIER} {if (strlen(yytext) > 1023) ReportError::LongIdentifier(&yylloc, yytext);
                         yy_pop_state(); LAST_STATE = YY_START; return T_FieldSelection;}
 
-{IDENTIFIER}        {if (strlen(yytext) > 1023)  ReportError::LongIdentifier(&yylloc, yytext);
+{IDENTIFIER}        {if (strlen(yytext) > 1023) ReportError::LongIdentifier(&yylloc, yytext);
                      memcpy(yylval.identifier, strndup(yytext, MaxIdentLen), sizeof(yylval.identifier));
                      return T_Identifier;}
 
@@ -251,7 +251,7 @@ static void DoBeforeEachAction()
     yylloc.first_column = currentColNum;
     yylloc.last_column = currentColNum + yyleng - 1;
     currentColNum += yyleng;
-    if (LAST_STATE == FIELD_OPT)    {
+    if (LAST_STATE == FIELD_OPT && YY_START != ML_COMMENT)    {
         yy_pop_state();
     }
     LAST_STATE = YY_START;
