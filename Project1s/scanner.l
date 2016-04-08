@@ -12,7 +12,6 @@
  */
 
 #include <string.h>
-#include <iostream>
 #include "scanner.h"
 #include "utility.h" // for PrintDebug()
 #include "errors.h"
@@ -46,6 +45,7 @@ struct yyltype yylloc; // manually dclared for pp1, later Yacc provides
  */
 static void DoBeforeEachAction();
 static int LAST_STATE;
+static bool NO_WHITESPACE = true;
 #define YY_USER_ACTION DoBeforeEachAction();
 
 int currentLineNum, currentColNum;
@@ -84,9 +84,9 @@ FLOAT	   (({FRACTIONAL}{EXPO}?[f|F]?)|({DIGITSEQ}{EXPO}[f|F]?))
   * %% markers which delimit the Rules section. 
   */ 
 
-<INITIAL,FIELD_OPT,ML_COMMENT>[ ]			   {}
-<INITIAL,FIELD_OPT,ML_COMMENT>[\t]                    {currentColNum += 8 - ((currentColNum-1) % 8);}
-<INITIAL,FIELD_OPT,ML_COMMENT>[\n]		           {currentLineNum++; currentColNum = 1;}
+<INITIAL,FIELD_OPT,ML_COMMENT>[ ]			   {NO_WHITESPACE = false;}
+<INITIAL,FIELD_OPT,ML_COMMENT>[\t]                    {NO_WHITESPACE = false; currentColNum += 8 - ((currentColNum-1) % 8);}
+<INITIAL,FIELD_OPT,ML_COMMENT>[\n]		           {NO_WHITESPACE = false; currentLineNum++; currentColNum = 1;}
 <INITIAL,FIELD_OPT>{LINECOMMENT}           {currentLineNum++; currentColNum = 1;}
 <INITIAL,FIELD_OPT>"/*"                    {yy_push_state(ML_COMMENT);}
 <ML_COMMENT>[^*\n]*     
@@ -251,8 +251,9 @@ static void DoBeforeEachAction()
     yylloc.first_column = currentColNum;
     yylloc.last_column = currentColNum + yyleng - 1;
     currentColNum += yyleng;
-    if (LAST_STATE == FIELD_OPT && YY_START != ML_COMMENT)    {
+    if (LAST_STATE == FIELD_OPT && YY_START != ML_COMMENT && NO_WHITESPACE)    {
         yy_pop_state();
     }
     LAST_STATE = YY_START;
+    NO_WHITESPACE = true;
 }
