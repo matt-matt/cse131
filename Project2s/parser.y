@@ -113,12 +113,22 @@ DeclList  :    DeclList Decl        { ($$=$1)->Append($2); }
           |    Decl                 { ($$ = new List<Decl*>)->Append($1); }
           ;
 
-Decl      :    T_Int T_Identifier T_Semicolon {
-						 // Comment
-                                                 // replace it with your implementation
-                                                 Identifier *id = new Identifier(@2, $2);
-                                                 $$ = new VarDecl(id, Type::intType);
-                                              }
+Decl      :	T_Int T_Identifier T_Semicolon	 {
+                                                   Identifier *id = new Identifier(@2, $2);
+                                                   $$ = new VarDecl(id, Type::intType);
+                                   	         }
+	  |	T_Void T_Identifier T_Semicolon  {
+						   Identifier *id = new Identifier(@2, $2);
+						   $$ = new VarDecl(id, Type::voidType); 
+						 }
+	  |	T_Bool T_Identifier T_Semicolon  {
+					 	   Identifier *id = new Identifier(@2, $2);
+						   $$ = new VarDecl(id, Type::boolType); 
+						 }
+	  |	T_Float T_Identifier T_Semicolon {
+						   Identifier *id = new Identifier(@2, $2);
+					  	   $$ = new VarDecl(id, Type::floatType); 
+					  	 }
           ;
 
 
