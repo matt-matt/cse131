@@ -84,15 +84,15 @@ FLOAT	   (({FRACTIONAL}{EXPO}?[f|F]?)|({DIGITSEQ}{EXPO}[f|F]?))
   * %% markers which delimit the Rules section. 
   */ 
 
-<INITIAL,FIELD_OPT,ML_COMMENT>[ ]			   {NO_WHITESPACE = false;}
-<INITIAL,FIELD_OPT,ML_COMMENT>[\t]                    {NO_WHITESPACE = false; currentColNum += 8 - ((currentColNum-1) % 8);}
-<INITIAL,FIELD_OPT,ML_COMMENT>[\n]		           {NO_WHITESPACE = false; currentLineNum++; currentColNum = 1;}
-<INITIAL,FIELD_OPT>{LINECOMMENT}           {currentLineNum++; currentColNum = 1;}
-<INITIAL,FIELD_OPT>"/*"                    {yy_push_state(ML_COMMENT);}
+<INITIAL,FIELD_OPT,ML_COMMENT>[ ]		{NO_WHITESPACE = false;}
+<INITIAL,FIELD_OPT,ML_COMMENT>[\t]              {NO_WHITESPACE = false; currentColNum = currentColNum - 1; currentColNum = (((currentColNum + 7)/8)*8) + 1;}
+<INITIAL,FIELD_OPT,ML_COMMENT>[\n]		{NO_WHITESPACE = false; currentLineNum++; currentColNum = 1;}
+<INITIAL,FIELD_OPT>{LINECOMMENT}           	{currentLineNum++; currentColNum = 1;}
+<INITIAL,FIELD_OPT>"/*"                    	{yy_push_state(ML_COMMENT);}
 <ML_COMMENT>[^*\n]*     
 <ML_COMMENT>"*"+[^*/\n]*  
-<ML_COMMENT>"*/"  {yy_pop_state();}
-<ML_COMMENT><<EOF>>     {ReportError::UntermComment(); return 0;}    
+<ML_COMMENT>"*/"  				{yy_pop_state();}
+<ML_COMMENT><<EOF>>     			{ReportError::UntermComment(); return 0;}    
 
 
 void 		        {return T_Void;}
