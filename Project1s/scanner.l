@@ -63,14 +63,14 @@ int currentLineNum, currentColNum;
 
 LINECOMMENT "//".*[\n]
 BOOLEAN     (true|false)
-IDENTIFIER  ([A-Z]|[a-z])([A-Z]|[a-z]|[0-9]|_)*
+IDENTIFIER  ([A-Z]|[a-z]|_)([A-Z]|[a-z]|[0-9]|_)*
 
 
 DIGITSEQ   (([1-9][0-9]*)|[0])
 
 FRACTIONAL (({DIGITSEQ}[.]{DIGITSEQ})|({DIGITSEQ}[.])|([.]{DIGITSEQ}))
 
-EXPO	   ([e|E][+|-]{DIGITSEQ})
+EXPO	   ([e|E][+|-]?{DIGITSEQ})
 
 FLOAT	   (({FRACTIONAL}{EXPO}?[f|F]?)|({DIGITSEQ}{EXPO}[f|F]?))
 
@@ -100,6 +100,7 @@ bool 		        {return T_Bool;}
 float 		        {return T_Float;}
 int 		        {return T_Int;}
 "unsigned int"		{return T_Uint;}
+uint			{return T_Uint;}
 ivec2 		        {return T_Ivec2;}
 ivec3 		        {return T_Ivec3;}
 ivec4 		        {return T_Ivec4;}
@@ -116,14 +117,15 @@ mat2 		        {return T_Mat2;}
 mat3 		        {return T_Mat3;}
 mat4 		        {return T_Mat4;}
 struct 		        {return T_Struct;}
-in 		        {return T_Struct;}
-out 		        {return T_Struct;}
+in 		        {return T_In;}
+out 		        {return T_Out;}
 const               {return T_Const;}
 uniform             {return T_Uniform;}
 while               {return T_While;}
 break               {return T_Break;}
 continue            {return T_Continue;}
 else                {return T_Else;}
+do		    {return T_Do;}
 for                 {return T_For;}
 if                  {return T_If;}
 return              {return T_Return;}
