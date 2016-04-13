@@ -114,6 +114,7 @@ DeclList  :    DeclList Decl        { ($$=$1)->Append($2); }
           ;
 
 Decl      :    T_Int T_Identifier T_Semicolon {
+						 // Comment
                                                  // replace it with your implementation
                                                  Identifier *id = new Identifier(@2, $2);
                                                  $$ = new VarDecl(id, Type::intType);
