@@ -40,11 +40,15 @@ void yyerror(const char *msg); // standard error-handling routine
  */
 %union {
     int integerConstant;
+    unsigned int uintConstant;
     bool boolConstant;
     float floatConstant;
     char identifier[MaxIdentLen+1]; // +1 for terminating null
     Decl *decl;
+    VarDecl *vardecl;
     List<Decl*> *declList;
+    Type * type;
+    List<varDecl*> formals;
 }
 
 
@@ -70,9 +74,11 @@ void yyerror(const char *msg); // standard error-handling routine
 %token   T_LeftParen T_RightParen T_LeftBracket T_RightBracket T_LeftBrace T_RightBrace
 
 %token   <identifier> T_Identifier
+%token   <identifier> T_FieldSelect
 %token   <integerConstant> T_IntConstant
 %token   <floatConstant> T_FloatConstant
 %token   <boolConstant> T_BoolConstant
+%token   <uintConstant> T_UintConstant
 
 /* Non-terminal types
  * ------------------
@@ -87,6 +93,8 @@ void yyerror(const char *msg); // standard error-handling routine
  */
 %type <declList>  DeclList
 %type <decl>      Decl
+%type <vardecl>   VarDecl
+%type <type>      TypeLiteral
 
 
 
@@ -113,24 +121,138 @@ DeclList  :    DeclList Decl        { ($$=$1)->Append($2); }
           |    Decl                 { ($$ = new List<Decl*>)->Append($1); }
           ;
 
-Decl      :	T_Int T_Identifier T_Semicolon	 {
-                                                   Identifier *id = new Identifier(@2, $2);
-                                                   $$ = new VarDecl(id, Type::intType);
-                                   	         }
-	  |	T_Void T_Identifier T_Semicolon  {
-						   Identifier *id = new Identifier(@2, $2);
-						   $$ = new VarDecl(id, Type::voidType); 
-						 }
-	  |	T_Bool T_Identifier T_Semicolon  {
-					 	   Identifier *id = new Identifier(@2, $2);
-						   $$ = new VarDecl(id, Type::boolType); 
-						 }
-	  |	T_Float T_Identifier T_Semicolon {
-						   Identifier *id = new Identifier(@2, $2);
-					  	   $$ = new VarDecl(id, Type::floatType); 
-					  	 }
+Decl      : VarDecl T_Semicolon {$$ = $1;}
           ;
+VarDecl     :   FullySpecifiedType T_Identifier    {
+                                Identifier *id = new
+                                Identifier(@2, $2);
+                                $$ = new VarDecl(id, $1);
+                            }
+            |   
+            ;
 
+FullySpecifiedType  :   TypeSpecifier
+                    |   TypeQualifier TypeSpecifier
+                    ;
+
+TypeQualifier   :   StorageQualifier
+                |   TypeQualifier StorageQualifier
+                ;
+
+StorageQualifier    :   T_Const
+                    |   T_In
+                    |   T_Out
+                    |   T_Uniform
+                    ;
+
+TypeSpecifier   :   TypeLiteral {$$ = $1;}
+                |   TypeLiteral T_LeftBracket ConditionalExpression T_RightBracket
+                ;
+
+TypeLiteral :   T_Void  {$$ = Type::voidType;}
+            |   T_Bool  {$$ = Type::boolType;}
+            |   T_Int   {$$ = Type::intType;}
+            |   T_Float {$$ = Type::floatType;}
+            |   T_Mat2   {$$ = Type::mat2Type;}
+            |   T_Mat3   {$$ = Type::mat3Type;}
+            |   T_Mat4   {$$ = Type::mat4Type;}
+            |   T_Vec2   {$$ = Type::vec2Type;}
+            |   T_Vec3   {$$ = Type::vec3Type;}
+            |   T_Vec4   {$$ = Type::vec4Type;}
+            |   T_Ivec2   {$$ = Type::ivec2Type;}
+            |   T_Ivec3   {$$ = Type::ivec3Type;}
+            |   T_Ivec4   {$$ = Type::ivec4Type;}
+            |   T_Bvec2   {$$ = Type::bvec2Type;}
+            |   T_Bvec3   {$$ = Type::bvec3Type;}
+            |   T_Bvec4   {$$ = Type::bvec4Type;}
+            |   T_Uint   {$$ = Type::uintType;}
+            |   T_Uvec2   {$$ = Type::uvec2Type;}
+            |   T_Uvec3   {$$ = Type::uvec3Type;}
+            |   T_Uvec4   {$$ = Type::uvec4Type;}
+            ;
+
+PrimaryExpression   :   T_Identifier
+                    |   T_IntConstant
+                    |   T_UintConstant
+                    |   T_FloatConstant
+                    |   T_BoolConstant
+                    |   T_LeftParen Expression T_RightParen
+                    ;
+
+Expression  :   ConditionalExpression
+            |   UnaryExpression AssignmentOperator Expression
+            ;
+
+ConditionalExpression   :   OrExpression
+                        |   OrExpression T_Question Expression T_Colon Expression
+                        ;
+
+OrExpression    :   AndExpression
+                |   OrExpression T_Or AndExpression
+
+AndExpression   :   EqualityExpression
+                |   AndExpression T_And EqualityExpression
+                ;
+
+EqualityExpression  :   RelationalExpression
+                    |   EqualityExpression T_EQ RelationalExpression
+                    |   EqualityExpression T_NE RelationalExpression
+                    ;
+
+RelationalExpression    :   AdditiveExpression
+                        |   RelationalExpression T_LeftAngle AdditiveExpression
+                        |   RelationalExpression T_RightAngle AdditiveExpression
+                        |   RelationalExpression T_LessEqual AdditiveExpression
+                        |   RelationalExpression T_GreaterEqual AdditiveExpression
+                        ;
+
+AdditiveExpression  :   MultiplicativeExpr
+                    |   AdditiveExpression T_Plus MultiplicativeExpr
+                    |   AdditiveExpression T_Dash MultiplicativeExpr
+                    ;
+
+MultiplicativeExpr  :   UnaryExpression
+                    |   MultiplicativeExpr T_Star UnaryExpression
+                    |   MultiplicativeExpr T_Slash UnaryExpression
+                    ;
+
+UnaryExpression :   PostfixExpression
+                |   T_Inc UnaryExpression
+                |   T_Dec UnaryExpression
+                |   T_Plus UnaryExpression
+                |   T_Dash UnaryExpression
+                ;
+
+PostfixExpression   :   PrimaryExpression
+                    |   PostfixExpression T_LeftBracket Expression T_RightBracket
+                    |   FunctionCall
+                    |   PostfixExpression T_Dot T_FieldSelect
+                    |   PostfixExpression T_Inc
+                    |   PostfixExpression T_Dec
+                    ;
+
+FunctionCall    :   FunctionCallParams T_RightParen
+                |   FunctionCallNoParams T_RightParen
+                ;
+
+FunctionCallParams  :   FunctionIdentifier T_LeftParen Expression
+                    |   FunctionCallParams T_Comma Expression
+                    ;
+
+FunctionIdentifier  :   TypeSpecifier
+                    |   PostfixExpression
+                    ;
+
+FunctionCallNoParams    :   FunctionIdentifier T_LeftParen T_Void
+                        |   FunctionIdentifier T_LeftParen
+                        ;
+
+AssignmentOperator  :   T_Equal
+                    |   T_MulAssign
+                    |   T_DivAssign
+                    |   T_AddAssign
+                    |   T_SubAssign
+                    ;         
 
 %%
 
