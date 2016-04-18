@@ -123,23 +123,17 @@ DeclList  :    DeclList Decl        { ($$=$1)->Append($2); }
 
 Decl      : VarDecl T_Semicolon {$$ = $1;}
           ;
-VarDecl     :   FullySpecifiedType T_Identifier    {
+VarDecl     :   TypeSpecifier T_Identifier    {
                                 Identifier *id = new
                                 Identifier(@2, $2);
                                 $$ = new VarDecl(id, $1);
                             }
-            |   
+	    |	TypeSpecifier TypeQualifier
+            |   TypeSpecifier  T_Identifier T_LeftBracket ConditionalExpression T_RightBracket 
+	    |   TypeSepcifier  T_Identifier T_Equal Expression 
             ;
 
-FullySpecifiedType  :   TypeSpecifier
-                    |   TypeQualifier TypeSpecifier
-                    ;
-
-TypeQualifier   :   StorageQualifier
-                |   TypeQualifier StorageQualifier
-                ;
-
-StorageQualifier    :   T_Const
+TypeQualifier    :   T_Const
                     |   T_In
                     |   T_Out
                     |   T_Uniform
