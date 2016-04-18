@@ -48,7 +48,8 @@ void yyerror(const char *msg); // standard error-handling routine
     VarDecl *vardecl;
     List<Decl*> *declList;
     Type * type;
-    List<varDecl*> formals;
+    TypeQualifier * typequal;
+    Expr * expr;
 }
 
 
@@ -91,10 +92,14 @@ void yyerror(const char *msg); // standard error-handling routine
  * of the union named "declList" which is of type List<Decl*>.
  * pp2: You'll need to add many of these of your own.
  */
-%type <declList>  DeclList
-%type <decl>      Decl
-%type <vardecl>   VarDecl
-%type <type>      TypeLiteral
+%type <declList>    DeclList
+%type <decl>        Decl
+%type <vardecl>     VarDecl
+%type <type>        TypeLiteral
+%type <type>        TypeSpecifier
+%type <typequal>    TypeQualifier
+%type <expr>        PrimaryExpression
+%type <expr>        Expression
 
 
 
@@ -123,24 +128,41 @@ DeclList  :    DeclList Decl        { ($$=$1)->Append($2); }
 
 Decl      : VarDecl T_Semicolon {$$ = $1;}
           ;
-VarDecl     :   TypeSpecifier T_Identifier    {
+VarDecl         :   TypeSpecifier T_Identifier    {
                                 Identifier *id = new
                                 Identifier(@2, $2);
                                 $$ = new VarDecl(id, $1);
                             }
-	    |	TypeSpecifier TypeQualifier
-            |   TypeSpecifier  T_Identifier T_LeftBracket ConditionalExpression T_RightBracket 
-	    |   TypeSepcifier  T_Identifier T_Equal Expression 
-            ;
+	            |	TypeQualifier TypeSpecifier T_Identifier    {
+                    Identifier *id = new Identifier(@3, $3);
+                    $$ = new VarDecl(id, $2, $1);}
+                |   TypeSpecifier  T_Identifier T_LeftBracket ConditionalExpression T_RightBracket 
+                {
+                    Identifier * id = new Identifier(@2, $2);
+                    Type * type = new ArrayType(@1, $1);
+                    $$ = new VarDecl(id, type);
+                }
+                |   TypeQualifier TypeSpecifier T_Identifier T_LeftBracket ConditionalExpression T_RightBracket
+                {
+                    Identifier * id = new Identifier(@3, $3);
+                    Type * type = new ArrayType(@2, $2);
+                    $$ = new VarDecl(id, type, $1);
+                }
+	            |   TypeSpecifier  T_Identifier T_Equal Expression 
+	            |   TypeQualifier TypeSpecifier T_Identifier T_Equal Expression 
+                ;
 
-TypeQualifier    :   T_Const
-                    |   T_In
-                    |   T_Out
-                    |   T_Uniform
-                    ;
+TypeQualifier    :   T_Const    {$$ = TypeQualifier::constTypeQualifier;}    
+                 |   T_In   {$$ = TypeQualifier::inTypeQualifier;} 
+                 |   T_Out  {$$ = TypeQualifier::outTypeQualifier;} 
+                 |   T_Uniform  {$$ = TypeQualifier::uniformTypeQualifier;} 
+                 ;
 
 TypeSpecifier   :   TypeLiteral {$$ = $1;}
                 |   TypeLiteral T_LeftBracket ConditionalExpression T_RightBracket
+                {
+                    $$ = $1;
+                }
                 ;
 
 TypeLiteral :   T_Void  {$$ = Type::voidType;}
@@ -166,15 +188,20 @@ TypeLiteral :   T_Void  {$$ = Type::voidType;}
             ;
 
 PrimaryExpression   :   T_Identifier
-                    |   T_IntConstant
-                    |   T_UintConstant
-                    |   T_FloatConstant
-                    |   T_BoolConstant
-                    |   T_LeftParen Expression T_RightParen
+                    |   T_IntConstant   {$$ = new IntConstant(@1, $1);}
+                    |   T_FloatConstant {$$ = new FloatConstant(@1, $1);}
+                    |   T_BoolConstant  {$$ = new BoolConstant(@1, $1);}
+                    |   T_LeftParen Expression T_RightParen {$$ = $2;}
                     ;
 
-Expression  :   ConditionalExpression
+Expression  :   ConditionalExpression   
+            {
+                
+            }
             |   UnaryExpression AssignmentOperator Expression
+            {
+                $$ = new AssignExpr($1, $2, $3);
+            }
             ;
 
 ConditionalExpression   :   OrExpression
@@ -241,11 +268,11 @@ FunctionCallNoParams    :   FunctionIdentifier T_LeftParen T_Void
                         |   FunctionIdentifier T_LeftParen
                         ;
 
-AssignmentOperator  :   T_Equal
-                    |   T_MulAssign
-                    |   T_DivAssign
-                    |   T_AddAssign
-                    |   T_SubAssign
+AssignmentOperator  :   T_Equal {$$ = new Operator(@1, "=");}
+                    |   T_MulAssign {$$ = new Operator(@1, "*=");}
+                    |   T_DivAssign {$$ = new Operator(@1, "/=");}
+                    |   T_AddAssign {$$ = new Operator(@1, "+=");}
+                    |   T_SubAssign {$$ = new Operator(@1, "-=");}
                     ;         
 
 %%
