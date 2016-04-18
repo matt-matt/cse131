@@ -122,6 +122,8 @@ DeclList  :    DeclList Decl        { ($$=$1)->Append($2); }
           ;
 
 Decl      : VarDecl T_Semicolon {$$ = $1;}
+          | FunctionPrototype T_Semicolon 
+          | TypeQualifier T_Identifier T_Semicolon 
           ;
 VarDecl     :   TypeSpecifier T_Identifier    {
                                 Identifier *id = new
@@ -130,13 +132,14 @@ VarDecl     :   TypeSpecifier T_Identifier    {
                             }
 	    |	TypeSpecifier TypeQualifier
             |   TypeSpecifier  T_Identifier T_LeftBracket ConditionalExpression T_RightBracket 
-	    |   TypeSepcifier  T_Identifier T_Equal Expression 
+	    |   TypeSpecifier  T_Identifier T_Equal Expression 
             ;
 
-TypeQualifier    :   T_Const
+TypeQualifier       :   T_Const
                     |   T_In
                     |   T_Out
                     |   T_Uniform
+                    |   TypeQualifier TypeQualifier 
                     ;
 
 TypeSpecifier   :   TypeLiteral {$$ = $1;}
@@ -172,6 +175,21 @@ PrimaryExpression   :   T_Identifier
                     |   T_BoolConstant
                     |   T_LeftParen Expression T_RightParen
                     ;
+
+FunctionPrototype   : FunctionHeader T_RightParen
+		    | FunctionHeaderParam T_RightParen  
+		    ;
+
+FunctionHeader	    :TypeSpecifier T_Identifier T_LeftParen 
+		    ;  
+
+FunctionHeaderParam : FunctionHeader ParamDeclaration  
+                    | FunctionHeaderParam T_Comma ParamDeclaration 
+                    ; 
+
+ParamDeclaration    : TypeSpecifier T_Identifier
+                    | TypeSpecifier
+		    ;  
 
 Expression  :   ConditionalExpression
             |   UnaryExpression AssignmentOperator Expression
@@ -240,6 +258,84 @@ FunctionIdentifier  :   TypeSpecifier
 FunctionCallNoParams    :   FunctionIdentifier T_LeftParen T_Void
                         |   FunctionIdentifier T_LeftParen
                         ;
+
+Statement 	    : StatementScope 
+                    | SimpleStatement 
+                    ;
+
+StatementScope	    : T_LeftBrace T_RightBrace
+                    | T_LeftBrace StatementList T_RightBrace 
+                    | SimpleStatement 
+                    ;
+
+StatementNoScope    : T_LeftBrace T_RightBrace 
+                    | T_LeftBrace StatementList T_RightBrace 
+                    | SimpleStatement 
+                    ; 
+
+StatementList       : Statement 
+                    | StatementList Statement
+                    ; 
+
+SimpleStatement     : Decl
+                    | T_Semicolon
+                    | Expression T_Semicolon 
+                    | SelectionStatement
+                    | SwitchStatement 
+                    | CaseLabel 
+                    | IterationStatement 
+                    | JumpStatement 
+                    ;
+
+Condition           : Expression
+                    | TypeSpecifier T_Identifier T_Equal Expression 
+
+SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_Else StatementScope
+                    | T_If T_LeftParen Expression T_RightParen StatementScope
+                    ;
+
+SwitchStatement     : T_Switch T_LeftParen Expression T_RightParen T_LeftBrace StatementList T_RightBrace 
+                    | T_Switch T_LeftParen Expression T_RightParen T_LeftBrace T_RightBrace 
+		    ;
+
+CaseLabel 	    : T_Case Expression T_Colon
+                    | T_Default T_Colon
+                    ; 
+
+IterationStatement  : T_While T_LeftParen Condition T_RightParen StatementNoScope 
+                    | T_Do StatementScope T_While T_LeftParen Expression T_RightParen T_Semicolon 
+                    | T_For T_LeftParen ForInitStatement ForRestStatement T_RightParen StatementNoScope 
+                    ; 
+
+ForInitStatement    : T_Semicolon
+                    | Expression T_Semicolon
+                    | Decl
+                    ; 
+
+ForRestStatement    : Condition T_Semicolon
+                    | T_Semicolon
+                    | Condition T_Semicolon Expression
+                    | T_Semicolon Expression
+                    ; 
+
+JumpStatement 	    : T_Continue T_Semicolon
+                    | T_Break T_Semicolon
+                    | T_Return T_Semicolon
+                    | T_Return Expression T_Semicolon 
+                    ;
+
+TranslationUnit     : ExternalDecl
+                    | TranslationUnit ExternalDecl 
+                    ; 
+
+ExternalDecl        : FunctionDefinition
+                    | Decl 
+                    ; 
+
+ 
+FunctionDefinition   : FunctionPrototype T_LeftBrace T_RightBrace 
+                    | FunctionPrototype T_LeftBrace StatementList T_RightBrace 
+
 
 AssignmentOperator  :   T_Equal
                     |   T_MulAssign
