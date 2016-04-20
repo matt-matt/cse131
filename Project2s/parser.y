@@ -229,59 +229,56 @@ ParamDeclaration    : TypeSpecifier T_Identifier
 		    ;  
 
 Expression  :   ConditionalExpression {$$ = $1;}
-            |   UnaryExpression AssignmentOperator Expression
-            {
-                $$ = new AssignExpr($1, $2, $3);
-            }
+            |   UnaryExpression AssignmentOperator Expression {$$ = new AssignExpr($1, $2, $3);}
             ;
 
-ConditionalExpression   :   OrExpression
+ConditionalExpression   :   OrExpression {$$ = $1}
                         |   OrExpression T_Question Expression T_Colon Expression
                         ;
 
 OrExpression    :   AndExpression {$$ = $1;}
-                |   OrExpression T_Or AndExpression
+                |   OrExpression T_Or AndExpression {$$ = new LogicalExpr($1, new Operator(@2, "||"), $3);}
 
 AndExpression   :   EqualityExpression {$$ = $1;}
-                |   AndExpression T_And EqualityExpression
+                |   AndExpression T_And EqualityExpression {$$ = new LogicalExpr($1, new Operator(@2, "&&"), $3);}
                 ;
 
 EqualityExpression  :   RelationalExpression {$$ = $1;}
-                    |   EqualityExpression T_EQ RelationalExpression {$$ = new EqualityExpression($1, new Operator(@2, "=="), $3)}
-                    |   EqualityExpression T_NE RelationalExpression {$$ = new EqualityExpression($1, new Operator(@2, "!="), $3)}
+                    |   EqualityExpression T_EQ RelationalExpression {$$ = new EqualityExpr($1, new Operator(@2, "=="), $3);}
+                    |   EqualityExpression T_NE RelationalExpression {$$ = new EqualityExpr($1, new Operator(@2, "!="), $3);}
 
                     ;
 
-RelationalExpression    :   AdditiveExpression
-                        |   RelationalExpression T_LeftAngle AdditiveExpression
-                        |   RelationalExpression T_RightAngle AdditiveExpression
-                        |   RelationalExpression T_LessEqual AdditiveExpression
-                        |   RelationalExpression T_GreaterEqual AdditiveExpression
+RelationalExpression    :   AdditiveExpression {$$ = $1;}
+                        |   RelationalExpression T_LeftAngle AdditiveExpression    {$$ = new RelationalExpr($1, new Operator(@2, "<"), $3);}
+                        |   RelationalExpression T_RightAngle AdditiveExpression   {$$ = new RelationalExpr($1, new Operator(@2, ">"), $3);}
+                        |   RelationalExpression T_LessEqual AdditiveExpression    {$$ = new RelationalExpr($1, new Operator(@2, "<="), $3);}
+                        |   RelationalExpression T_GreaterEqual AdditiveExpression {$$ = new RelationalExpr($1, new Operator(@2, ">="), $3);}
                         ;
 
-AdditiveExpression  :   MultiplicativeExpr
-                    |   AdditiveExpression T_Plus MultiplicativeExpr
-                    |   AdditiveExpression T_Dash MultiplicativeExpr
+AdditiveExpression  :   MultiplicativeExpr {$$ = $1;}
+                    |   AdditiveExpression T_Plus MultiplicativeExpr {$$ = new ArithmeticExpr($1, new Operator(@2, "+"), $3);}
+                    |   AdditiveExpression T_Dash MultiplicativeExpr {$$ = new ArithmeticExpr($1, new Operator(@2, "-"), $3);}
                     ;
 
-MultiplicativeExpr  :   UnaryExpression
-                    |   MultiplicativeExpr T_Star UnaryExpression
-                    |   MultiplicativeExpr T_Slash UnaryExpression
+MultiplicativeExpr  :   UnaryExpression {$$ = $1;}
+                    |   MultiplicativeExpr T_Star UnaryExpression  {$$ = new ArithmeticExpr($1, new Operator(@2, "*"), $3);}
+                    |   MultiplicativeExpr T_Slash UnaryExpression {$$ = new ArithmeticExpr($1, new Operator(@2, "/"), $3);}
                     ;
 
 UnaryExpression :   PostfixExpression {$$ = $1;}
-                |   T_Inc UnaryExpression {$$ = new Operation(new Operator(@1, "++"), $2);}
-                |   T_Dec UnaryExpression {$$ = new Operation(new Operator(@1, "--"), $2);}
-                |   T_Plus UnaryExpression{$$ = new Operation(new Operator(@1, "+"), $2);}
-                |   T_Dash UnaryExpression{$$ = new Operation(new Operator(@1, "-"), $2);}
+                |   T_Inc UnaryExpression {$$ = new ArithmeticExpr(new Operator(@1, "++"), $2);}
+                |   T_Dec UnaryExpression {$$ = new ArithmeticExpr(new Operator(@1, "--"), $2);}
+                |   T_Plus UnaryExpression{$$ = new ArithmeticExpr(new Operator(@1, "+"), $2);}
+                |   T_Dash UnaryExpression{$$ = new ArithmeticExpr(new Operator(@1, "-"), $2);}
                 ;
 
 PostfixExpression   :   PrimaryExpression {$$ = $1;}
                     |   PostfixExpression T_LeftBracket Expression T_RightBracket
                     |   FunctionCall {$$ = $1;}
                     |   PostfixExpression T_Dot T_FieldSelect
-                    |   PostfixExpression T_Inc {$$ = new PostfixExpression($1, new Operator(@2, "++"));}
-                    |   PostfixExpression T_Dec {$$ = new PostfixExpression($1, new Operator(@2, "--"));}
+                    |   PostfixExpression T_Inc {$$ = new PostfixExpr($1, new Operator(@2, "++"));}
+                    |   PostfixExpression T_Dec {$$ = new PostfixExpr($1, new Operator(@2, "--"));}
                     ;
 
 FunctionCall    :   FunctionCallParams T_RightParen
@@ -324,9 +321,7 @@ StatementList       : Statement
                     | StatementList Statement
                     ; 
 
-SimpleStatement     : Decl
-                    | T_Semicolon {}
-                    | Expression T_Semicolon {$$ = $1;}
+SimpleStatement     : Expression T_Semicolon {$$ = $1;}
                     | SelectionStatement {$$ = $1;}
                     | SwitchStatement  {$$ = $1;}
                     | CaseLabel {$$ = $1;}
@@ -366,7 +361,7 @@ ForRestStatement    : Condition T_Semicolon
                     ; 
 
 JumpStatement 	    : T_Break T_Semicolon {$$ = new BreakStmt(@1);}
-                    | T_Return T_Semicolon {$$ =  new ReturnStmt(@1, NULL);}
+                    | T_Return T_Semicolon {$$ =  new EmptyExpr();}
                     | T_Return Expression T_Semicolon {$$ = new ReturnStmt(@1, $2); }
                     ;
 
