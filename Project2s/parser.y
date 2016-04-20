@@ -140,6 +140,8 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <stmt>	    ForRestStatement
 %type <stmtblock>   StatementScope 
 %type <stmtblock>   StatementNoScope
+%type <stmtblock>   CompoundScope
+%type <stmtblock>    CompoundNoScope
 
 %%
 /* Rules
