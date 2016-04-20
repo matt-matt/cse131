@@ -51,7 +51,8 @@ void yyerror(const char *msg); // standard error-handling routine
     TypeQualifier * typequal;
     Expr * expr;
     ReturnStmt * returnstmt;
-    Operator *op;  
+    Operator * op;  
+    Stmt * stmt; 
 }
 
 
@@ -102,12 +103,22 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <typequal>    TypeQualifier
 %type <expr>        PrimaryExpression
 %type <expr>        Expression
+%type <expr>        PostfixExpression
+%type <expr> 	    UnaryExpression
+%type <expr>        OrExpression
+%type <expr>        AndExpression
+%type <expr>	    EqualityExpression 
 %type <returnstmt>  JumpStatement
 %type <fndecl>      FunctionHeader
 %type <fndecl>      FunctionHeaderParam
 %type <fndecl>      FunctionPrototype
 %type <op>          AssignmentOperator
-
+%type <stmt>	    Statement
+%type <stmt>	    SimpleStatement
+%type <stmt>        StatementScope 
+%type <stmt>        SelectionStatement
+%type <stmt>        SwitchStatement
+%type <stmt>        IterationStatement
 
 %%
 /* Rules
@@ -217,7 +228,7 @@ ParamDeclaration    : TypeSpecifier T_Identifier
                     | TypeSpecifier
 		    ;  
 
-Expression  :   ConditionalExpression
+Expression  :   ConditionalExpression {$$ = $1;}
             |   UnaryExpression AssignmentOperator Expression
             {
                 $$ = new AssignExpr($1, $2, $3);
@@ -228,16 +239,17 @@ ConditionalExpression   :   OrExpression
                         |   OrExpression T_Question Expression T_Colon Expression
                         ;
 
-OrExpression    :   AndExpression
+OrExpression    :   AndExpression {$$ = $1;}
                 |   OrExpression T_Or AndExpression
 
-AndExpression   :   EqualityExpression
+AndExpression   :   EqualityExpression {$$ = $1;}
                 |   AndExpression T_And EqualityExpression
                 ;
 
-EqualityExpression  :   RelationalExpression
-                    |   EqualityExpression T_EQ RelationalExpression
-                    |   EqualityExpression T_NE RelationalExpression
+EqualityExpression  :   RelationalExpression {$$ = $1;}
+                    |   EqualityExpression T_EQ RelationalExpression {$$ = new EqualityExpression($1, new Operator(@2, "=="), $3)}
+                    |   EqualityExpression T_NE RelationalExpression {$$ = new EqualityExpression($1, new Operator(@2, "!="), $3)}
+
                     ;
 
 RelationalExpression    :   AdditiveExpression
@@ -257,19 +269,19 @@ MultiplicativeExpr  :   UnaryExpression
                     |   MultiplicativeExpr T_Slash UnaryExpression
                     ;
 
-UnaryExpression :   PostfixExpression
-                |   T_Inc UnaryExpression
-                |   T_Dec UnaryExpression
-                |   T_Plus UnaryExpression
-                |   T_Dash UnaryExpression
+UnaryExpression :   PostfixExpression {$$ = $1;}
+                |   T_Inc UnaryExpression {$$ = new Operation(new Operator(@1, "++"), $2);}
+                |   T_Dec UnaryExpression {$$ = new Operation(new Operator(@1, "--"), $2);}
+                |   T_Plus UnaryExpression{$$ = new Operation(new Operator(@1, "+"), $2);}
+                |   T_Dash UnaryExpression{$$ = new Operation(new Operator(@1, "-"), $2);}
                 ;
 
-PostfixExpression   :   PrimaryExpression
+PostfixExpression   :   PrimaryExpression {$$ = $1;}
                     |   PostfixExpression T_LeftBracket Expression T_RightBracket
-                    |   FunctionCall
+                    |   FunctionCall {$$ = $1;}
                     |   PostfixExpression T_Dot T_FieldSelect
-                    |   PostfixExpression T_Inc
-                    |   PostfixExpression T_Dec
+                    |   PostfixExpression T_Inc {$$ = new PostfixExpression($1, new Operator(@2, "++"));}
+                    |   PostfixExpression T_Dec {$$ = new PostfixExpression($1, new Operator(@2, "--"));}
                     ;
 
 FunctionCall    :   FunctionCallParams T_RightParen
@@ -294,8 +306,8 @@ AssignmentOperator  :   T_Equal {$$ = new Operator(@1, "=");}
                     |   T_AddAssign {$$ = new Operator(@1, "+=");}
                     |   T_SubAssign {$$ = new Operator(@1, "-=");}
 
-Statement 	    : StatementScope 
-                    | SimpleStatement 
+Statement 	    : StatementScope {$$ = $1;}
+                    | SimpleStatement {$$ = $1;}
                     ;
 
 StatementScope	    : T_LeftBrace T_RightBrace
@@ -313,16 +325,16 @@ StatementList       : Statement
                     ; 
 
 SimpleStatement     : Decl
-                    | T_Semicolon
-                    | Expression T_Semicolon 
-                    | SelectionStatement
-                    | SwitchStatement 
-                    | CaseLabel 
-                    | IterationStatement 
-                    | JumpStatement 
+                    | T_Semicolon {}
+                    | Expression T_Semicolon {$$ = $1;}
+                    | SelectionStatement {$$ = $1;}
+                    | SwitchStatement  {$$ = $1;}
+                    | CaseLabel {$$ = $1;}
+                    | IterationStatement  {$$ = $1;}
+                    | JumpStatement  {$$ = $1;}
                     ;
 
-Condition           : Expression
+Condition           : Expression {$$ = $1;}
                     | TypeSpecifier T_Identifier T_Equal Expression 
 
 SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_Else StatementScope
@@ -334,7 +346,7 @@ SwitchStatement     : T_Switch T_LeftParen Expression T_RightParen T_LeftBrace S
 		            ;
 
 CaseLabel 	    : T_Case Expression T_Colon
-                    | T_Default T_Colon
+                    | T_Default T_Colon {}
                     ; 
 
 IterationStatement  : T_While T_LeftParen Condition T_RightParen StatementNoScope 
@@ -342,9 +354,9 @@ IterationStatement  : T_While T_LeftParen Condition T_RightParen StatementNoScop
                     | T_For T_LeftParen ForInitStatement ForRestStatement T_RightParen StatementNoScope 
                     ; 
 
-ForInitStatement    : T_Semicolon
-                    | Expression T_Semicolon
-                    | Decl
+ForInitStatement    : T_Semicolon {}
+                    | Expression T_Semicolon {$$ = $1}
+                    | Decl 
                     ; 
 
 ForRestStatement    : Condition T_Semicolon
@@ -353,9 +365,9 @@ ForRestStatement    : Condition T_Semicolon
                     | T_Semicolon Expression
                     ; 
 
-JumpStatement 	    : T_Break T_Semicolon 
-                    | T_Return T_Semicolon
-                    | T_Return Expression T_Semicolon {$$ = ReturnStmt::ReturnStmt(@2, $2); }
+JumpStatement 	    : T_Break T_Semicolon {$$ = new BreakStmt(@1);}
+                    | T_Return T_Semicolon {$$ =  new ReturnStmt(@1, NULL);}
+                    | T_Return Expression T_Semicolon {$$ = new ReturnStmt(@1, $2); }
                     ;
 
 TranslationUnit     : ExternalDecl
