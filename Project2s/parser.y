@@ -460,19 +460,25 @@ AssignmentOperator  :   T_Equal {$$ = new Operator(@1, "=");}
                     |   T_SubAssign {$$ = new Operator(@1, "-=");}
 
 
-Statement 	    : StatementScope {$$ = $1;}
+Statement 	    : CompoundScope {$$ = $1;}
                     | SimpleStatement {$$ = $1;}
                     ;
 
-StatementScope	    : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(),  new List<Stmt*>());}
-                    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.VarDecl,  $2);}
+StatementScope	    : CompoundNoScope
                     | SimpleStatement {$$ = $1;}
                     ;
 
-StatementNoScope    : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(),  new List<Stmt*>());}
-                    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.VarDecl,  $2);}
+StatementNoScope    : CompoundNoScope
                     | SimpleStatement {$$ = $1;}
                     ; 
+
+CompoundScope       : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(),  new List<Stmt*>());}
+		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.VarDecl,  $2);}
+                    ; 
+
+CompoundNoScope     : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(),  new List<Stmt*>());}
+		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.VarDecl,  $2);}
+		    ;
 
 StatementList       : Statement {($$ = new List<Stmt*>)->Append($1); }
                     | StatementList Statement {($$=$1)->Append($2);}
@@ -553,8 +559,7 @@ ExternalDecl        : FunctionDefinition
                     ; 
 
  
-FunctionDefinition  : FunctionPrototype T_LeftBrace T_RightBrace 
-                    | FunctionPrototype T_LeftBrace StatementList T_RightBrace 
+FunctionDefinition  : FunctionPrototype CompoundNoScope
                     ;   
 
 %%
