@@ -115,6 +115,7 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <expr>        AdditiveExpression 
 %type <expr>        MultiplicativeExpr 
 %type <expr>        ConditionalExpression 
+%type <expr>	    Condition
 %type <returnstmt>  JumpStatement
 %type <fndecl>      FunctionPrototype
 %type <op>          AssignmentOperator
@@ -128,6 +129,7 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <stmt>        SwitchStatement
 %type <stmt>        IterationStatement
 %type <stmt>        ForInitStatement
+%type <stmt>	    ForRestStatement
 %type <stmtblock>   StatementScope 
 %type <stmtblock>   StatementNoScope
 
