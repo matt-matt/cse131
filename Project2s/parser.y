@@ -53,6 +53,7 @@ void yyerror(const char *msg); // standard error-handling routine
     ReturnStmt * returnstmt;
     Operator *op;
     funcargs fnargs;
+    funcinvoke fninvk;
     Stmt * stmt; 
 }
 
@@ -109,6 +110,10 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <expr>        OrExpression
 %type <expr>        AndExpression
 %type <expr>	    EqualityExpression 
+%type <expr>        ConditionalExpression
+%type <expr>        RelationalExpression
+%type <expr>        AdditiveExpression
+%type <expr> 	    MultiplicativeExpr
 %type <returnstmt>  JumpStatement
 %type <fndecl>      FunctionPrototype
 %type <op>          AssignmentOperator
@@ -121,6 +126,10 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <stmt>        SelectionStatement
 %type <stmt>        SwitchStatement
 %type <stmt>        IterationStatement
+%type <fndecl>      FunctionCall
+%type <fninvk>      FunctionCallParams
+%type <fninvk>      FunctionCallNoParams
+%type <identifier>  FunctionIdentifier
 
 %%
 /* Rules
@@ -220,7 +229,13 @@ PrimaryExpression   :   T_Identifier
                     ;
 
 FunctionPrototype   :   FunctionHeader T_RightParen
-		            |   FunctionHeaderParam T_RightParen  
+                    {
+                        $$ = new FnDecl($1.id, $1.type, $1.tq, NULL);
+                    }
+		            |   FunctionHeaderParam T_RightParen 
+                    {
+                        $$ = new FnDecl($1.id, $1.type, $1.tq, $1.params);
+                    }
 		            ;
 
 FunctionHeader	    :   TypeSpecifier T_Identifier T_LeftParen
@@ -276,7 +291,8 @@ ConditionalExpression   :   OrExpression {$$ = $1}
 
 OrExpression    :   AndExpression {$$ = $1;}
                 |   OrExpression T_Or AndExpression {$$ = new LogicalExpr($1, new Operator(@2, "||"), $3);}
-
+                ;
+                
 AndExpression   :   EqualityExpression {$$ = $1;}
                 |   AndExpression T_And EqualityExpression {$$ = new LogicalExpr($1, new Operator(@2, "&&"), $3);}
                 ;
@@ -284,7 +300,6 @@ AndExpression   :   EqualityExpression {$$ = $1;}
 EqualityExpression  :   RelationalExpression {$$ = $1;}
                     |   EqualityExpression T_EQ RelationalExpression {$$ = new EqualityExpr($1, new Operator(@2, "=="), $3);}
                     |   EqualityExpression T_NE RelationalExpression {$$ = new EqualityExpr($1, new Operator(@2, "!="), $3);}
-
                     ;
 
 RelationalExpression    :   AdditiveExpression {$$ = $1;}
@@ -305,10 +320,10 @@ MultiplicativeExpr  :   UnaryExpression {$$ = $1;}
                     ;
 
 UnaryExpression :   PostfixExpression {$$ = $1;}
-                |   T_Inc UnaryExpression {$$ = new ArithmeticExpr(new Operator(@1, "++"), $2);}
-                |   T_Dec UnaryExpression {$$ = new ArithmeticExpr(new Operator(@1, "--"), $2);}
-                |   T_Plus UnaryExpression{$$ = new ArithmeticExpr(new Operator(@1, "+"), $2);}
-                |   T_Dash UnaryExpression{$$ = new ArithmeticExpr(new Operator(@1, "-"), $2);}
+                |   T_Inc UnaryExpression   {$$ = new ArithmeticExpr(new Operator(@1, "++"), $2);}
+                |   T_Dec UnaryExpression   {$$ = new ArithmeticExpr(new Operator(@1, "--"), $2);}
+                |   T_Plus UnaryExpression  {$$ = new ArithmeticExpr(new Operator(@1, "+"), $2);}
+                |   T_Dash UnaryExpression  {$$ = new ArithmeticExpr(new Operator(@1, "-"), $2);}
                 ;
 
 PostfixExpression   :   PrimaryExpression {$$ = $1;}
@@ -323,20 +338,96 @@ PostfixExpression   :   PrimaryExpression {$$ = $1;}
                     ;
 
 FunctionCall    :   FunctionCallParams T_RightParen
+                {
+                    $$ = new Call(@1, NULL, $1.field, $1.args);
+                }
                 |   FunctionCallNoParams T_RightParen
+                {
+                    $$ = new Call(@1, NULL, $1.field, NULL);
+                }
                 ;
 
 FunctionCallParams  :   FunctionIdentifier T_LeftParen Expression
+                    {
+                        $$.field = $1;
+                        ($$.args = new List<Expr*>)->Append($3);
+                    }
                     |   FunctionCallParams T_Comma Expression
+                    {
+                        ($$.args=$1.args)->Append($3);
+                    }
                     ;
 
-FunctionIdentifier  :   TypeSpecifier
-                    |   PostfixExpression
-                    ;
-
-FunctionCallNoParams    :   FunctionIdentifier T_LeftParen T_Void
-                        |   FunctionIdentifier T_LeftParen
+FunctionCallNoParams    :   FunctionIdentifier T_LeftParen T_Void   {$$.field = $1;}
+                        |   FunctionIdentifier T_LeftParen  {$$.field = $1;}
                         ;
+
+FunctionIdentifier  :   T_Mat2
+                    {
+                        $$ = new Identifier(@1, "mat2");
+                    }
+                    |   T_Mat3
+                    {
+                        $$ = new Identifier(@1, "mat3");
+                    }
+                    |   T_Mat4
+                    {
+                        $$ = new Identifier(@1, "mat4");
+                    }
+                    |   T_Vec2
+                    {
+                        $$ = new Identifier(@1, "vec2");
+                    }
+                    |   T_Vec3 
+                    {
+                        $$ = new Identifier(@1, "vec3");
+                    }
+                    |   T_Vec4
+                    {
+                        $$ = new Identifier(@1, "vec4");
+                    }
+                    |   T_Ivec2
+                    {
+                        $$ = new Identifier(@1, "ivec2");
+                    }
+                    |   T_Ivec3
+                    {
+                        $$ = new Identifier(@1, "ivec3");
+                    }
+                    |   T_Ivec4
+                    {
+                        $$ = new Identifier(@1, "ivec4");
+                    }
+                    |   T_Bvec2
+                    {
+                        $$ = new Identifier(@1, "bvec2");
+                    }
+                    |   T_Bvec3
+                    {
+                        $$ = new Identifier(@1, "bvec3");
+                    }
+                    |   T_Bvec4
+                    {
+                        $$ = new Identifier(@1, "bvec4");
+                    }
+                    |   T_Uvec2
+                    {
+                        $$ = new Identifier(@1, "uvec2");
+                    }
+                    |   T_Uvec3
+                    {
+                        $$ = new Identifier(@1, "uvec3");
+                    }
+                    |   T_Uvec4
+                    {
+                        $$ = new Identifier(@1, "uvec4");
+                    }
+
+                    |   T_Identifier
+                    {
+                        $$ = new Identifier(@1, $1);
+                    }
+                    ;
 
 AssignmentOperator  :   T_Equal {$$ = new Operator(@1, "=");}
                     |   T_MulAssign {$$ = new Operator(@1, "*=");}

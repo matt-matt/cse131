@@ -26,6 +26,14 @@ typedef struct
     List<VarDecl *> * params;
 } funcargs;
 
+typedef struct
+{
+    Expr * base;
+    Identifier * field;
+    List<Expr *> * args;
+} funcinvoke;
+
+
  
 // Next, we want to get the exported defines for the token codes and
 // typedef for YYSTYPE and exported global variable yylval.  These
