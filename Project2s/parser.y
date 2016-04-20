@@ -53,6 +53,7 @@ void yyerror(const char *msg); // standard error-handling routine
     ReturnStmt * returnstmt;
     Operator *op;
     funcargs fnargs;
+    Stmt * stmt; 
 }
 
 
@@ -103,6 +104,11 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <typequal>    TypeQualifier
 %type <expr>        PrimaryExpression
 %type <expr>        Expression
+%type <expr>        PostfixExpression
+%type <expr> 	    UnaryExpression
+%type <expr>        OrExpression
+%type <expr>        AndExpression
+%type <expr>	    EqualityExpression 
 %type <returnstmt>  JumpStatement
 %type <fndecl>      FunctionPrototype
 %type <op>          AssignmentOperator
@@ -115,7 +121,12 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <expr>        Expression
 %type <expr>        Expression
 %type <expr>        Expression
-
+%type <stmt>	    Statement
+%type <stmt>	    SimpleStatement
+%type <stmt>        StatementScope 
+%type <stmt>        SelectionStatement
+%type <stmt>        SwitchStatement
+%type <stmt>        IterationStatement
 
 %%
 /* Rules
@@ -261,74 +272,60 @@ ParamDeclaration    :   TypeSpecifier T_Identifier
                     |   TypeSpecifier
 		            ;  
 
-Expression  :   ConditionalExpression
-            |   UnaryExpression AssignmentOperator Expression
-            {
-                //$$ = new AssignExpr($1, $2, $3);
-            }
+Expression  :   ConditionalExpression {$$ = $1;}
+            |   UnaryExpression AssignmentOperator Expression {$$ = new AssignExpr($1, $2, $3);}
             ;
 
-ConditionalExpression   :   OrExpression
+ConditionalExpression   :   OrExpression {$$ = $1}
                         |   OrExpression T_Question Expression T_Colon Expression
                         ;
 
-OrExpression    :   AndExpression
-                |   OrExpression T_Or AndExpression
+OrExpression    :   AndExpression {$$ = $1;}
+                |   OrExpression T_Or AndExpression {$$ = new LogicalExpr($1, new Operator(@2, "||"), $3);}
 
-AndExpression   :   EqualityExpression
-                |   AndExpression T_And EqualityExpression
+AndExpression   :   EqualityExpression {$$ = $1;}
+                |   AndExpression T_And EqualityExpression {$$ = new LogicalExpr($1, new Operator(@2, "&&"), $3);}
                 ;
 
-EqualityExpression  :   RelationalExpression
-                    |   EqualityExpression T_EQ RelationalExpression
-                    |   EqualityExpression T_NE RelationalExpression
+EqualityExpression  :   RelationalExpression {$$ = $1;}
+                    |   EqualityExpression T_EQ RelationalExpression {$$ = new EqualityExpr($1, new Operator(@2, "=="), $3);}
+                    |   EqualityExpression T_NE RelationalExpression {$$ = new EqualityExpr($1, new Operator(@2, "!="), $3);}
+
                     ;
 
-RelationalExpression    :   AdditiveExpression
-                        |   RelationalExpression T_LeftAngle AdditiveExpression
-                        |   RelationalExpression T_RightAngle AdditiveExpression
-                        |   RelationalExpression T_LessEqual AdditiveExpression
-                        |   RelationalExpression T_GreaterEqual AdditiveExpression
+RelationalExpression    :   AdditiveExpression {$$ = $1;}
+                        |   RelationalExpression T_LeftAngle AdditiveExpression    {$$ = new RelationalExpr($1, new Operator(@2, "<"), $3);}
+                        |   RelationalExpression T_RightAngle AdditiveExpression   {$$ = new RelationalExpr($1, new Operator(@2, ">"), $3);}
+                        |   RelationalExpression T_LessEqual AdditiveExpression    {$$ = new RelationalExpr($1, new Operator(@2, "<="), $3);}
+                        |   RelationalExpression T_GreaterEqual AdditiveExpression {$$ = new RelationalExpr($1, new Operator(@2, ">="), $3);}
                         ;
 
-AdditiveExpression  :   MultiplicativeExpr
-                    |   AdditiveExpression T_Plus MultiplicativeExpr
-                    |   AdditiveExpression T_Dash MultiplicativeExpr
+AdditiveExpression  :   MultiplicativeExpr {$$ = $1;}
+                    |   AdditiveExpression T_Plus MultiplicativeExpr {$$ = new ArithmeticExpr($1, new Operator(@2, "+"), $3);}
+                    |   AdditiveExpression T_Dash MultiplicativeExpr {$$ = new ArithmeticExpr($1, new Operator(@2, "-"), $3);}
                     ;
 
-MultiplicativeExpr  :   UnaryExpression
-                    |   MultiplicativeExpr T_Star UnaryExpression
-                    |   MultiplicativeExpr T_Slash UnaryExpression
+MultiplicativeExpr  :   UnaryExpression {$$ = $1;}
+                    |   MultiplicativeExpr T_Star UnaryExpression  {$$ = new ArithmeticExpr($1, new Operator(@2, "*"), $3);}
+                    |   MultiplicativeExpr T_Slash UnaryExpression {$$ = new ArithmeticExpr($1, new Operator(@2, "/"), $3);}
                     ;
 
-UnaryExpression :   PostfixExpression   {$$ = $1;}
-                |   T_Inc UnaryExpression
-                {
-                    $$ = new ArithmeticExpr(new Operator(@1, "++"), $2);
-                }
-                |   T_Dec UnaryExpression
-                {
-                    $$ = new ArithmeticExpr(new Operator(@1, "--"), $2);
-                }
-                |   T_Plus UnaryExpression
-                {
-                    $$ = new ArithmeticExpr(new Operator(@1, "+"), $2);
-                }
-                |   T_Dash UnaryExpression
-                {
-                    $$ = new ArithmeticExpr(new Operator(@1, "-"), $2);
-                }
+UnaryExpression :   PostfixExpression {$$ = $1;}
+                |   T_Inc UnaryExpression {$$ = new ArithmeticExpr(new Operator(@1, "++"), $2);}
+                |   T_Dec UnaryExpression {$$ = new ArithmeticExpr(new Operator(@1, "--"), $2);}
+                |   T_Plus UnaryExpression{$$ = new ArithmeticExpr(new Operator(@1, "+"), $2);}
+                |   T_Dash UnaryExpression{$$ = new ArithmeticExpr(new Operator(@1, "-"), $2);}
                 ;
 
-PostfixExpression   :   PrimaryExpression   {$$ = $1;}
+PostfixExpression   :   PrimaryExpression {$$ = $1;}
                     |   PostfixExpression T_LeftBracket Expression T_RightBracket
                     {
                         $$ = new ArrayAccess(@1, $1, $3);
                     }
-                    |   FunctionCall
+                    |   FunctionCall {$$ = $1;}
                     |   PostfixExpression T_Dot T_FieldSelect
-                    |   PostfixExpression T_Inc
-                    |   PostfixExpression T_Dec
+                    |   PostfixExpression T_Inc {$$ = new PostfixExpr($1, new Operator(@2, "++"));}
+                    |   PostfixExpression T_Dec {$$ = new PostfixExpr($1, new Operator(@2, "--"));}
                     ;
 
 FunctionCall    :   FunctionCallParams T_RightParen
@@ -353,8 +350,9 @@ AssignmentOperator  :   T_Equal {$$ = new Operator(@1, "=");}
                     |   T_AddAssign {$$ = new Operator(@1, "+=");}
                     |   T_SubAssign {$$ = new Operator(@1, "-=");}
 
-Statement 	        : StatementScope 
-                    | SimpleStatement 
+
+Statement 	        : StatementScope {$$ = $1;}
+                    | SimpleStatement {$$ = $1;}
                     ;
 
 StatementScope	    : T_LeftBrace T_RightBrace
@@ -371,18 +369,16 @@ StatementList       : Statement
                     | StatementList Statement
                     ; 
 
-SimpleStatement     : Decl
-                    | T_Semicolon
-                    | Expression T_Semicolon 
-                    | SelectionStatement
-                    | SwitchStatement 
-                    | CaseLabel 
-                    | IterationStatement 
-                    | JumpStatement 
+SimpleStatement     : Expression T_Semicolon {$$ = $1;}
+                    | SelectionStatement {$$ = $1;}
+                    | SwitchStatement  {$$ = $1;}
+                    | CaseLabel {$$ = $1;}
+                    | IterationStatement  {$$ = $1;}
+                    | JumpStatement  {$$ = $1;}
                     ;
 
-Condition           : Expression
-                    | TypeSpecifier T_Identifier T_Equal Expression
+Condition           : Expression {$$ = $1;}
+                    | TypeSpecifier T_Identifier T_Equal Expression 
                     ;
 
 SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_Else StatementScope
@@ -393,18 +389,23 @@ SwitchStatement     : T_Switch T_LeftParen Expression T_RightParen T_LeftBrace S
                     | T_Switch T_LeftParen Expression T_RightParen T_LeftBrace T_RightBrace 
 		            ;
 
+<<<<<<< HEAD
 CaseLabel 	        : T_Case Expression T_Colon
                     | T_Default T_Colon
+=======
+CaseLabel 	    : T_Case Expression T_Colon
+                    | T_Default T_Colon {}
+>>>>>>> c8c07076f57a3e7d0980dcab05af6b04196dbf2b
                     ; 
 
 IterationStatement  : T_While T_LeftParen Condition T_RightParen StatementNoScope 
                     | T_Do StatementScope T_While T_LeftParen Expression T_RightParen T_Semicolon 
                     | T_For T_LeftParen ForInitStatement ForRestStatement T_RightParen StatementNoScope 
-                    ; 
+                    ;
 
-ForInitStatement    : T_Semicolon
-                    | Expression T_Semicolon
-                    | Decl
+ForInitStatement    : T_Semicolon {}
+                    | Expression T_Semicolon {$$ = $1}
+                    | Decl 
                     ; 
 
 ForRestStatement    : Condition T_Semicolon
@@ -413,9 +414,9 @@ ForRestStatement    : Condition T_Semicolon
                     | T_Semicolon Expression
                     ; 
 
-JumpStatement 	    : T_Break T_Semicolon 
-                    | T_Return T_Semicolon
-                    | T_Return Expression T_Semicolon {$$ = ReturnStmt::ReturnStmt(@2, $2);}
+JumpStatement 	    : T_Break T_Semicolon {$$ = new BreakStmt(@1);}
+                    | T_Return T_Semicolon {$$ =  new EmptyExpr();}
+                    | T_Return Expression T_Semicolon {$$ = new ReturnStmt(@1, $2); }
                     ;
 
 TranslationUnit     : ExternalDecl

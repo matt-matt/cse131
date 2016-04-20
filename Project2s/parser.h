@@ -18,6 +18,14 @@
 #include "ast_expr.h"
 #include "ast_stmt.h"
 
+typedef struct
+{
+    Identifier * id;
+    Type * type;
+    TypeQualifier * tq;
+    List<VarDecl *> * params;
+} funcargs;
+
  
 // Next, we want to get the exported defines for the token codes and
 // typedef for YYSTYPE and exported global variable yylval.  These
