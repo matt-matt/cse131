@@ -102,6 +102,7 @@ void yyerror(const char *msg); // standard error-handling routine
  * pp2: You'll need to add many of these of your own.
  */
 %type <declList>    DeclList
+%type <decl>        GlobalDecl
 %type <decl>        Decl
 %type <vardecl>     VarDecl
 %type <type>        TypeLiteral
@@ -159,9 +160,13 @@ Program   :    DeclList            {
                                     }
           ;
 
-DeclList  :    DeclList Decl        { ($$=$1)->Append($2); }
-          |    Decl                 { ($$ = new List<Decl*>)->Append($1); }
+DeclList  :    DeclList GlobalDecl        { ($$=$1)->Append($2); }
+          |    GlobalDecl                 { ($$ = new List<Decl*>)->Append($1); }
           ;
+
+GlobalDecl  :   FunctionDefinition
+            |   Decl    {$$ = $1;}
+            ;
 
 Decl      : VarDecl T_Semicolon {$$ = $1;}
           | FunctionPrototype T_Semicolon {$$ = $1;}
@@ -299,7 +304,6 @@ ParamDeclaration    :   TypeSpecifier T_Identifier
                         Identifier *id = new Identifier(@2, $2);
                         $$ = new VarDecl(id, $1);
                     }
-                    |   TypeSpecifier
 		            ;  
 
 Expression  :   ConditionalExpression {$$ = $1;}
@@ -558,7 +562,6 @@ ExternalDecl        : FunctionDefinition
                     | Decl 
                     ; 
 
- 
 FunctionDefinition  : FunctionPrototype CompoundNoScope
                     ;   
 
