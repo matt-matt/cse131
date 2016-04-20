@@ -115,12 +115,6 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <fnargs>      FunctionHeader
 %type <fnargs>      FunctionHeaderParam
 %type <vardecl>     ParamDeclaration
-%type <expr>        UnaryExpression
-%type <expr>        PostfixExpression
-%type <expr>        Expression
-%type <expr>        Expression
-%type <expr>        Expression
-%type <expr>        Expression
 %type <stmt>	    Statement
 %type <stmt>	    SimpleStatement
 %type <stmt>        StatementScope 
@@ -389,13 +383,8 @@ SwitchStatement     : T_Switch T_LeftParen Expression T_RightParen T_LeftBrace S
                     | T_Switch T_LeftParen Expression T_RightParen T_LeftBrace T_RightBrace 
 		            ;
 
-<<<<<<< HEAD
 CaseLabel 	        : T_Case Expression T_Colon
                     | T_Default T_Colon
-=======
-CaseLabel 	    : T_Case Expression T_Colon
-                    | T_Default T_Colon {}
->>>>>>> c8c07076f57a3e7d0980dcab05af6b04196dbf2b
                     ; 
 
 IterationStatement  : T_While T_LeftParen Condition T_RightParen StatementNoScope 
