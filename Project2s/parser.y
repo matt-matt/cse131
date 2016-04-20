@@ -46,13 +46,14 @@ void yyerror(const char *msg); // standard error-handling routine
     char identifier[MaxIdentLen+1]; // +1 for terminating null
     Decl *decl;
     VarDecl *vardecl;
-    FnDecl * fndecl;
     List<Decl*> *declList;
     Type * type;
     TypeQualifier * typequal;
     Expr * expr;
-    Operator * op;
+    ReturnStmt * returnstmt;
+    Operator *op;  
 }
+
 
 /* Tokens
  * ------
@@ -101,6 +102,7 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <typequal>    TypeQualifier
 %type <expr>        PrimaryExpression
 %type <expr>        Expression
+%type <returnstmt>  JumpStatement
 %type <fndecl>      FunctionHeader
 %type <fndecl>      FunctionHeaderParam
 %type <fndecl>      FunctionPrototype
@@ -194,50 +196,31 @@ TypeLiteral :   T_Void  {$$ = Type::voidType;}
             ;
 
 PrimaryExpression   :   T_Identifier
-                    {   Identifier * id = new Identifier(@1, $1);
-                        $$ = new VarExpr(@1, id);
-                    }
                     |   T_IntConstant   {$$ = new IntConstant(@1, $1);}
                     |   T_FloatConstant {$$ = new FloatConstant(@1, $1);}
                     |   T_BoolConstant  {$$ = new BoolConstant(@1, $1);}
                     |   T_LeftParen Expression T_RightParen {$$ = $2;}
                     ;
 
-FunctionPrototype   : FunctionHeader T_RightParen {$$ = $1;}
-		            | FunctionHeaderParam T_RightParen  {$$ = $1;} 
-		            ;
+FunctionPrototype   : FunctionHeader T_RightParen
+		    | FunctionHeaderParam T_RightParen  
+		    ;
 
-FunctionHeader	    :   TypeSpecifier T_Identifier T_LeftParen
-                        {
-                            Identifier * id = new Identifier(@2, $2);
-                            $$ = new FnDecl(id, $1, NULL);
-                        }
-                    |   TypeQualifier TypeSpecifier T_Identifier T_LeftParen
-                        {
-                            Identifier * id = new Identifier(@3, $3);
-                            $$ = new FnDecl(id, $2, $1, NULL);
-                        }
-		            ;  
+FunctionHeader	    :TypeSpecifier T_Identifier T_LeftParen 
+		    ;  
 
-FunctionHeaderParam : TypeSpecifier T_Identifier T_LeftParen ParamDeclaration
-                    {
-                        
-                    } 
+FunctionHeaderParam : FunctionHeader ParamDeclaration  
                     | FunctionHeaderParam T_Comma ParamDeclaration 
                     ; 
 
 ParamDeclaration    : TypeSpecifier T_Identifier
-                    {
-                       // Identifier * id = new Identifier(@2, $2);
-                        //$$ = new VarDecl(id, $1);
-                    }
                     | TypeSpecifier
 		    ;  
 
 Expression  :   ConditionalExpression
             |   UnaryExpression AssignmentOperator Expression
             {
-                //$$ = new AssignExpr($1, $2, $3);
+                $$ = new AssignExpr($1, $2, $3);
             }
             ;
 
@@ -281,11 +264,8 @@ UnaryExpression :   PostfixExpression
                 |   T_Dash UnaryExpression
                 ;
 
-PostfixExpression   :   PrimaryExpression   {/*$$ = $1;*/}
+PostfixExpression   :   PrimaryExpression
                     |   PostfixExpression T_LeftBracket Expression T_RightBracket
-                    {
-                        //$$ = new ArrayAccess(@1, $1, $3);
-                    }
                     |   FunctionCall
                     |   PostfixExpression T_Dot T_FieldSelect
                     |   PostfixExpression T_Inc
@@ -313,9 +293,8 @@ AssignmentOperator  :   T_Equal {$$ = new Operator(@1, "=");}
                     |   T_DivAssign {$$ = new Operator(@1, "/=");}
                     |   T_AddAssign {$$ = new Operator(@1, "+=");}
                     |   T_SubAssign {$$ = new Operator(@1, "-=");}
-                    ;
 
-Statement 	        : StatementScope 
+Statement 	    : StatementScope 
                     | SimpleStatement 
                     ;
 
@@ -345,7 +324,6 @@ SimpleStatement     : Decl
 
 Condition           : Expression
                     | TypeSpecifier T_Identifier T_Equal Expression 
-                    ;
 
 SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_Else StatementScope
                     | T_If T_LeftParen Expression T_RightParen StatementScope
@@ -355,7 +333,7 @@ SwitchStatement     : T_Switch T_LeftParen Expression T_RightParen T_LeftBrace S
                     | T_Switch T_LeftParen Expression T_RightParen T_LeftBrace T_RightBrace 
 		            ;
 
-CaseLabel 	        : T_Case Expression T_Colon
+CaseLabel 	    : T_Case Expression T_Colon
                     | T_Default T_Colon
                     ; 
 
@@ -375,10 +353,9 @@ ForRestStatement    : Condition T_Semicolon
                     | T_Semicolon Expression
                     ; 
 
-JumpStatement 	    : T_Continue T_Semicolon
-                    | T_Break T_Semicolon
+JumpStatement 	    : T_Break T_Semicolon 
                     | T_Return T_Semicolon
-                    | T_Return Expression T_Semicolon 
+                    | T_Return Expression T_Semicolon {$$ = ReturnStmt::ReturnStmt(@2, $2); }
                     ;
 
 TranslationUnit     : ExternalDecl
