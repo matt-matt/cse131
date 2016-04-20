@@ -46,6 +46,7 @@ void yyerror(const char *msg); // standard error-handling routine
     char identifier[MaxIdentLen+1]; // +1 for terminating null
     Decl *decl;
     VarDecl *vardecl;
+    FnDecl *fndecl;
     List<Decl*> *declList;
     List<Stmt*> *stmtList; 
     Type * type;
@@ -56,7 +57,8 @@ void yyerror(const char *msg); // standard error-handling routine
     funcargs fnargs;
     funcinvoke fninvk;
     Stmt * stmt; 
-    StmtBlock *stmtblock; 
+    StmtBlock *stmtblock;
+    Identifier * wrapper;
 }
 
 
@@ -129,10 +131,10 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <stmt>        SelectionStatement
 %type <stmt>        SwitchStatement
 %type <stmt>        IterationStatement
-%type <fndecl>      FunctionCall
+%type <expr>        FunctionCall
 %type <fninvk>      FunctionCallParams
 %type <fninvk>      FunctionCallNoParams
-%type <identifier>  FunctionIdentifier
+%type <wrapper>     FunctionIdentifier
 %type <stmt>        ForInitStatement
 %type <stmt>	    ForRestStatement
 %type <stmtblock>   StatementScope 
@@ -304,7 +306,7 @@ Expression  :   ConditionalExpression {$$ = $1;}
             |   UnaryExpression AssignmentOperator Expression {$$ = new AssignExpr($1, $2, $3);}
             ;
 
-ConditionalExpression   :   OrExpression {$$ = $1}
+ConditionalExpression   :   OrExpression {$$ = $1;}
                         |   OrExpression T_Question Expression T_Colon Expression
                         ;
 
@@ -374,8 +376,14 @@ FunctionCallParams  :   FunctionIdentifier T_LeftParen Expression
                     }
                     ;
 
-FunctionCallNoParams    :   FunctionIdentifier T_LeftParen T_Void   {$$.field = $1;}
-                        |   FunctionIdentifier T_LeftParen  {$$.field = $1;}
+FunctionCallNoParams    :   FunctionIdentifier T_LeftParen T_Void
+                        {
+                            $$.field = $1;
+                        }
+                        |   FunctionIdentifier T_LeftParen
+                        {
+                            $$.field = $1;
+                        }
                         ;
 
 FunctionIdentifier  :   T_Mat2
@@ -473,7 +481,7 @@ StatementList       : Statement {($$ = new List<Stmt*>)->Append($1); }
 SimpleStatement     : Expression T_Semicolon {$$ = $1;}
                     | SelectionStatement {$$ = $1;}
                     | SwitchStatement  {$$ = $1;}
-                    | CaseLabel {$$ = $1;}
+                    /*| CaseLabel {$$ = $1;}*/
                     | IterationStatement  {$$ = $1;}
                     | JumpStatement  {$$ = $1;}
                     ;
@@ -489,7 +497,7 @@ SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_
 
 SwitchStatement     : T_Switch T_LeftParen Expression T_RightParen T_LeftBrace StatementList T_RightBrace 
                     | T_Switch T_LeftParen Expression T_RightParen T_LeftBrace T_RightBrace 
-		    ;
+		            ;
 
 CaseLabel 	    : T_Case Expression T_Colon
                     | T_Default T_Colon
