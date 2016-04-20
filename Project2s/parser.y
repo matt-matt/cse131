@@ -134,6 +134,7 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <fninvk>      FunctionCallNoParams
 %type <identifier>  FunctionIdentifier
 %type <stmt>        ForInitStatement
+%type <stmt>	    ForRestStatement
 %type <stmtblock>   StatementScope 
 %type <stmtblock>   StatementNoScope
 
@@ -523,10 +524,11 @@ ForInitStatement    : T_Semicolon {}
                     | Decl {$$ = $1;}
                     ; 
 
-ForRestStatement    : Condition T_Semicolon
+ForRestStatement    : Condition T_Semicolon {$$ = new ConditionStmt($1, new EmptyExpr());}
                     | T_Semicolon {}
-                    | Condition T_Semicolon Expression
-                    | T_Semicolon Expression
+                    | Condition T_Semicolon Expression {$$ = new ConditionStmt($1, $3);}
+                    | T_Semicolon Expression {$$ = new ConditionStmt(new EmptyExpr(), $2)}
+
                     ; 
 
 JumpStatement 	    : T_Break T_Semicolon {$$ = new BreakStmt(@1);}
