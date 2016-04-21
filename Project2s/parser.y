@@ -144,6 +144,8 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <stmtblock>   CompoundNoScope
 %type <vdclist>     SingleDeclList
 %type <fndecl>      FunctionDefinition
+%nonassoc "If" 
+%nonassoc T_Else 
 
 %%
 /* Rules
@@ -515,7 +517,7 @@ Conditionopt        :   Expression   {$$ = $1;}
                     ;
 
 SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_Else StatementScope {$$ = new IfStmt($3, $5, $7);}
-                    | T_If T_LeftParen Expression T_RightParen StatementScope   {$$ = new IfStmt($3, $5, NULL);}
+                    | T_If T_LeftParen Expression T_RightParen StatementScope   {$$ = new IfStmt($3, $5, NULL);}%prec"If" 
 
                     ;
 
