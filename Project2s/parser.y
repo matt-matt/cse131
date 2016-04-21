@@ -136,12 +136,12 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <fninvk>      FunctionCallParams
 %type <fninvk>      FunctionCallNoParams
 %type <wrapper>     FunctionIdentifier
-%type <stmt>        ForInitStatement
-%type <stmt>	    ForRestStatement
+%type <expr>  	    ForInitStatement
+%type <expr>	    ForRestStatement
 %type <stmtblock>   StatementScope 
 %type <stmtblock>   StatementNoScope
 %type <stmtblock>   CompoundScope
-%type <stmtblock>    CompoundNoScope
+%type <stmtblock>   CompoundNoScope
 
 %%
 /* Rules
@@ -283,7 +283,7 @@ FunctionHeader	    :   TypeSpecifier T_Identifier T_LeftParen
                         $$.params = new List<VarDecl*>;
 
                     }
-		            ;
+		    ;
 
 FunctionHeaderParam :   FunctionHeader ParamDeclaration
                     {
@@ -313,7 +313,7 @@ Expression  :   ConditionalExpression {$$ = $1;}
             ;
 
 ConditionalExpression   :   OrExpression {$$ = $1;}
-                        |   OrExpression T_Question Expression T_Colon Expression
+                        |   OrExpression T_Question Expression T_Colon Expression {$$ = new SelectionExpr($1, $3, $5); }
                         ;
 
 OrExpression    :   AndExpression {$$ = $1;}
@@ -470,11 +470,11 @@ Statement 	    : CompoundScope {$$ = $1;}
                     | SimpleStatement {$$ = $1;}
                     ;
 
-StatementScope	    : CompoundNoScope
+StatementScope	    : CompoundNoScope {$$ = $1;}
                     | SimpleStatement {$$ = $1;}
                     ;
 
-StatementNoScope    : CompoundNoScope
+StatementNoScope    : CompoundNoScope {$$ = $1;}
                     | SimpleStatement {$$ = $1;}
                     ; 
 
@@ -502,8 +502,8 @@ Condition           : Expression {$$ = $1;}
                     | TypeSpecifier T_Identifier T_Equal Expression 
                     ;
 
-SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_Else StatementScope {$$ = new IfStmt(@3, @5, @7);}
-                    | T_If T_LeftParen Expression T_RightParen StatementScope {$$ = new IfStmt(@3, @5, NULL);}
+SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_Else StatementScope {$$ = new IfStmt($3, $5, $7);}
+                    | T_If T_LeftParen Expression T_RightParen StatementScope {$$ = new IfStmt($3, $5, NULL);}
 
                     ;
 
@@ -551,8 +551,8 @@ ForRestStatement    : Condition T_Semicolon {$$ = new ConditionStmt($1, new Empt
 
                     ; 
 
-JumpStatement 	    : T_Break T_Semicolon {$$ = new BreakStmt(@1);}
-                    | T_Return T_Semicolon {$$ =  new EmptyExpr();}
+JumpStatement 	    : T_Break T_Semicolon {$$ = new ReturnStmt(@1, new EmptyExpr());}
+                    | T_Return T_Semicolon {$$ =  new ReturnStmt(@1, new EmptyExpr());}
                     | T_Return Expression T_Semicolon {$$ = new ReturnStmt(@1, $2); }
                     ;
 
@@ -566,6 +566,9 @@ ExternalDecl        : FunctionDefinition
 
 FunctionDefinition  : FunctionPrototype CompoundNoScope
                     ;   
+
+SingleDeclList      :
+ 		    ; 
 
 %%
 
