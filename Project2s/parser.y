@@ -59,6 +59,7 @@ void yyerror(const char *msg); // standard error-handling routine
     StmtBlock *stmtblock;
     Identifier * wrapper;
     forloop fl;
+    List<VarDecl*> * vdclist;
 }
 
 
@@ -119,7 +120,6 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <expr>        AdditiveExpression 
 %type <expr>        MultiplicativeExpr 
 %type <expr>        ConditionalExpression 
-%type <expr>        Condition 
 %type <expr>        Conditionopt 
 %type <stmt>        JumpStatement
 %type <fndecl>      FunctionPrototype
@@ -131,7 +131,6 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <stmt>	    Statement
 %type <stmt>	    SimpleStatement
 %type <stmt>        SelectionStatement
-%type <stmt>        SwitchStatement
 %type <stmt>        IterationStatement
 %type <expr>        FunctionCall
 %type <fninvk>      FunctionCallParams
@@ -143,6 +142,8 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <stmtblock>   StatementNoScope
 %type <stmtblock>   CompoundScope
 %type <stmtblock>   CompoundNoScope
+%type <vdclist>     SingleDeclList
+%type <fndecl>      FunctionDefinition
 
 %%
 /* Rules
@@ -468,16 +469,31 @@ Statement 	    : CompoundScope {$$ = $1;}
                     ;
 
 StatementScope	    : CompoundNoScope
-                    | SimpleStatement {$$ = $1;}
+                    | SimpleStatement
+                    {   
+                        List<Stmt*> * list = new List<Stmt*>;
+                        list->Append($1);
+                        $$ = new StmtBlock(new List<VarDecl*>, list);
+                    }
                     ;
 
 StatementNoScope    : CompoundNoScope
-                    | SimpleStatement {$$ = $1;}
+                    | SimpleStatement
+                    {   
+                        List<Stmt*> * list = new List<Stmt*>;
+                        list->Append($1);
+                        $$ = new StmtBlock(new List<VarDecl*>, list);
+                    }
                     ; 
 
 CompoundScope       : T_LeftBrace T_RightBrace {$$ = new StmtBlock(NULL, NULL);}
-		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock(NULL,  $2);}
-                    ; 
+		            | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock(NULL,  $2);}
+		            | T_LeftBrace SingleDeclList StatementList T_RightBrace {$$ = new StmtBlock($2, $3);}
+                    ;
+
+SingleDeclList  :   VarDecl T_Semicolon {($$=new List<VarDecl*>)->Append($1);}
+                |   SingleDeclList VarDecl T_Semicolon  {($$=$1)->Append($2);}
+                ;
 
 CompoundNoScope     : T_LeftBrace T_RightBrace {$$ = new StmtBlock(NULL,  NULL);}
 		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock(NULL,  $2);}
@@ -489,17 +505,13 @@ StatementList       : Statement {($$ = new List<Stmt*>)->Append($1); }
 
 SimpleStatement     : Expression T_Semicolon {$$ = $1;}
                     | SelectionStatement {$$ = $1;}
-                    | SwitchStatement  {$$ = $1;}
+                    /*| SwitchStatement  {$$ = $1;}*/
                     /*| CaseLabel {$$ = $1;}*/
                     | IterationStatement  {$$ = $1;}
                     | JumpStatement  {$$ = $1;}
                     ;
 
-Condition           : Expression {$$ = $1;}
-                    | TypeSpecifier T_Identifier T_Equal Expression 
-                    ;
-
-Conditionopt        :   Condition   {$$ = $1;}
+Conditionopt        :   Expression   {$$ = $1;}
                     |   {$$ = new EmptyExpr();}
                     ;
 
@@ -508,15 +520,7 @@ SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_
 
                     ;
 
-SwitchStatement     : T_Switch T_LeftParen Expression T_RightParen T_LeftBrace StatementList T_RightBrace 
-                    | T_Switch T_LeftParen Expression T_RightParen T_LeftBrace T_RightBrace 
-		            ;
-
-CaseLabel 	    : T_Case Expression T_Colon
-                    | T_Default T_Colon
-                    ; 
-
-IterationStatement  : T_While T_LeftParen Condition T_RightParen StatementNoScope {$$ = new WhileStmt($3, $5);}
+IterationStatement  : T_While T_LeftParen Expression T_RightParen StatementNoScope {$$ = new WhileStmt($3, $5);}
                     | T_Do StatementScope T_While T_LeftParen Expression T_RightParen T_Semicolon 
  		            {
 			            $$ = new DoWhileStmt($2, $5); 
@@ -557,11 +561,14 @@ JumpStatement 	    : T_Break T_Semicolon {$$ = new BreakStmt(@1);}
                     | T_Return Expression T_Semicolon {$$ = new ReturnStmt(@1, $2); }
                     ;
 
-ExternalDecl        : FunctionDefinition
-                    | Decl 
+ExternalDecl        : FunctionDefinition    {$$ = $1;}
+                    | Decl  {$$ = $1;}
                     ; 
 
 FunctionDefinition  : FunctionPrototype CompoundNoScope
+                    {
+                        ($$=$1)->SetFunctionBody($2);
+                    }
                     ;   
 
 %%
