@@ -33,7 +33,11 @@ typedef struct
     List<Expr *> * args;
 } funcinvoke;
 
-
+typedef struct
+{
+    Expr * test;
+    Expr * step;
+} forloop;
  
 // Next, we want to get the exported defines for the token codes and
 // typedef for YYSTYPE and exported global variable yylval.  These
