@@ -52,13 +52,13 @@ void yyerror(const char *msg); // standard error-handling routine
     Type * type;
     TypeQualifier * typequal;
     Expr * expr;
-    ReturnStmt * returnstmt;
     Operator *op;
     funcargs fnargs;
     funcinvoke fninvk;
     Stmt * stmt; 
     StmtBlock *stmtblock;
     Identifier * wrapper;
+    forloop fl;
 }
 
 
@@ -101,8 +101,8 @@ void yyerror(const char *msg); // standard error-handling routine
  * of the union named "declList" which is of type List<Decl*>.
  * pp2: You'll need to add many of these of your own.
  */
-%type <declList>    DeclList
-%type <decl>        GlobalDecl
+%type <declList>    TranslationUnit
+%type <decl>        ExternalDecl
 %type <decl>        Decl
 %type <vardecl>     VarDecl
 %type <type>        TypeLiteral
@@ -120,7 +120,8 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <expr>        MultiplicativeExpr 
 %type <expr>        ConditionalExpression 
 %type <expr>        Condition 
-%type <returnstmt>  JumpStatement
+%type <expr>        Conditionopt 
+%type <stmt>        JumpStatement
 %type <fndecl>      FunctionPrototype
 %type <op>          AssignmentOperator
 %type <fnargs>      FunctionHeader
@@ -136,12 +137,12 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <fninvk>      FunctionCallParams
 %type <fninvk>      FunctionCallNoParams
 %type <wrapper>     FunctionIdentifier
-%type <stmt>        ForInitStatement
-%type <stmt>	    ForRestStatement
+%type <expr>        ForInitStatement
+%type <fl>  	    ForRestStatement
 %type <stmtblock>   StatementScope 
 %type <stmtblock>   StatementNoScope
 %type <stmtblock>   CompoundScope
-%type <stmtblock>    CompoundNoScope
+%type <stmtblock>   CompoundNoScope
 
 %%
 /* Rules
@@ -150,7 +151,7 @@ void yyerror(const char *msg); // standard error-handling routine
  * %% markers which delimit the Rules section.
 
  */
-Program   :    DeclList            {
+Program   :    TranslationUnit            {
                                       @1;
                                       /* pp2: The @1 is needed to convince
                                        * yacc to set up yylloc. You can remove
@@ -162,13 +163,9 @@ Program   :    DeclList            {
                                     }
           ;
 
-DeclList  :    DeclList GlobalDecl        { ($$=$1)->Append($2); }
-          |    GlobalDecl                 { ($$ = new List<Decl*>)->Append($1); }
+TranslationUnit  :    TranslationUnit ExternalDecl        { ($$=$1)->Append($2); }
+          |    ExternalDecl                 { ($$ = new List<Decl*>)->Append($1); }
           ;
-
-GlobalDecl  :   FunctionDefinition
-            |   Decl    {$$ = $1;}
-            ;
 
 Decl      : VarDecl T_Semicolon {$$ = $1;}
           | FunctionPrototype T_Semicolon {$$ = $1;}
@@ -478,12 +475,12 @@ StatementNoScope    : CompoundNoScope
                     | SimpleStatement {$$ = $1;}
                     ; 
 
-CompoundScope       : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(),  new List<Stmt*>());}
-		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.VarDecl,  $2);}
+CompoundScope       : T_LeftBrace T_RightBrace {$$ = new StmtBlock(NULL, NULL);}
+		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock(NULL,  $2);}
                     ; 
 
-CompoundNoScope     : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(),  new List<Stmt*>());}
-		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.VarDecl,  $2);}
+CompoundNoScope     : T_LeftBrace T_RightBrace {$$ = new StmtBlock(NULL,  NULL);}
+		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock(NULL,  $2);}
 		    ;
 
 StatementList       : Statement {($$ = new List<Stmt*>)->Append($1); }
@@ -502,8 +499,12 @@ Condition           : Expression {$$ = $1;}
                     | TypeSpecifier T_Identifier T_Equal Expression 
                     ;
 
-SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_Else StatementScope {$$ = new IfStmt(@3, @5, @7);}
-                    | T_If T_LeftParen Expression T_RightParen StatementScope {$$ = new IfStmt(@3, @5, NULL);}
+Conditionopt        :   Condition   {$$ = $1;}
+                    |   {$$ = new EmptyExpr();}
+                    ;
+
+SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_Else StatementScope {$$ = new IfStmt($3, $5, $7);}
+                    | T_If T_LeftParen Expression T_RightParen StatementScope   {$$ = new IfStmt($3, $5, NULL);}
 
                     ;
 
@@ -515,17 +516,16 @@ CaseLabel 	    : T_Case Expression T_Colon
                     | T_Default T_Colon
                     ; 
 
-IterationStatement  : T_While T_LeftParen Condition T_RightParen StatementNoScope {$$ = new ConditionalStmt($3, $5);}
+IterationStatement  : T_While T_LeftParen Condition T_RightParen StatementNoScope {$$ = new WhileStmt($3, $5);}
                     | T_Do StatementScope T_While T_LeftParen Expression T_RightParen T_Semicolon 
- 		      {
-			$$ = $2;
-			$$ = new ConditionalStmt($5, $2); 
-		      }
-                    | T_For T_LeftParen ForInitStatement Condition T_Semicolon T_RightParen StatementNoScope 
-                      {
-			$$ = new ForStmt($3, $4, new EmptyExpr(), $7); 
-		      }
-                    | T_For T_LeftParen ForInitStatement T_Semicolon T_RightParen StatementNoScope 
+ 		            {
+			            $$ = new DoWhileStmt($2, $5); 
+		            }
+                    | T_For T_LeftParen ForInitStatement ForRestStatement T_RightParen StatementNoScope 
+                    {
+			            $$ = new ForStmt($3, $4.test, $4.step, $6); 
+		            }
+                  /*  | T_For T_LeftParen ForInitStatement T_Semicolon T_RightParen StatementNoScope 
                       {
 			$$ = new ForStmt($3, new EmptyExpr(), new EmptyExpr(), $6); 
 		      }
@@ -537,28 +537,25 @@ IterationStatement  : T_While T_LeftParen Condition T_RightParen StatementNoScop
                       {
 			$$ = new ForStmt($3, new EmptyExpr(), $5, $7); 
 		      }
+              */
                     ;
 
-ForInitStatement    : T_Semicolon {}
+ForInitStatement    : T_Semicolon {$$ = new EmptyExpr();}
                     | Expression T_Semicolon {$$ = $1;}
-                    | Decl {$$ = $1;}
                     ; 
 
-ForRestStatement    : Condition T_Semicolon {$$ = new ConditionStmt($1, new EmptyExpr());}
-                    | T_Semicolon {}
-                    | Condition T_Semicolon Expression {$$ = new ConditionStmt($1, $3);}
-                    | T_Semicolon Expression {$$ = new ConditionStmt(new EmptyExpr(), $2)}
-
+ForRestStatement    : Conditionopt T_Semicolon {$$.test = $1;}
+                    | Conditionopt T_Semicolon Expression
+                    {
+                        $$.test = $1;
+                        $$.step = $3;
+                    }
                     ; 
 
 JumpStatement 	    : T_Break T_Semicolon {$$ = new BreakStmt(@1);}
-                    | T_Return T_Semicolon {$$ =  new EmptyExpr();}
+                    | T_Return T_Semicolon {$$ =  new ReturnStmt(@1, NULL);}
                     | T_Return Expression T_Semicolon {$$ = new ReturnStmt(@1, $2); }
                     ;
-
-TranslationUnit     : ExternalDecl
-                    | TranslationUnit ExternalDecl 
-                    ; 
 
 ExternalDecl        : FunctionDefinition
                     | Decl 
