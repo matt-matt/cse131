@@ -257,7 +257,7 @@ PrimaryExpression   :   T_Identifier
 
 FunctionPrototype   :   FunctionHeader T_RightParen
                     {
-                        $$ = new FnDecl($1.id, $1.type, $1.tq, NULL);
+                        $$ = new FnDecl($1.id, $1.type, new List<VarDecl*>());
                     }
 		            |   FunctionHeaderParam T_RightParen 
                     {
@@ -355,7 +355,7 @@ UnaryExpression :   PostfixExpression {$$ = $1;}
 PostfixExpression   :   PrimaryExpression {$$ = $1;}
                     |   PostfixExpression T_LeftBracket Expression T_RightBracket {$$ = new ArrayAccess(@1, $1, $3);}
                     |   FunctionCall {$$ = $1;}
-                    |   PostfixExpression T_Dot T_FieldSelect
+                    |   PostfixExpression T_Dot T_FieldSelect {$$ = new FieldAccess($1, new Identifier(@3, $3));}
                     |   PostfixExpression T_Inc {$$ = new PostfixExpr($1, new Operator(@2, "++"));}
                     |   PostfixExpression T_Dec {$$ = new PostfixExpr($1, new Operator(@2, "--"));}
                     ;
@@ -487,8 +487,8 @@ StatementNoScope    : CompoundNoScope
                     }
                     ; 
 
-CompoundScope       : T_LeftBrace T_RightBrace {$$ = new StmtBlock(NULL, NULL);}
-		            | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock(NULL,  $2);}
+CompoundScope       : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(), new List<Stmt*>());}
+		            | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(),  $2);}
 		            | T_LeftBrace SingleDeclList StatementList T_RightBrace {$$ = new StmtBlock($2, $3);}
                     ;
 
@@ -496,8 +496,8 @@ SingleDeclList  :   VarDecl T_Semicolon {($$=new List<VarDecl*>)->Append($1);}
                 |   SingleDeclList VarDecl T_Semicolon  {($$=$1)->Append($2);}
                 ;
 
-CompoundNoScope     : T_LeftBrace T_RightBrace {$$ = new StmtBlock(NULL,  NULL);}
-		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock(NULL,  $2);}
+CompoundNoScope     : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(), new List<Stmt*>());}
+		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(),  $2);}
 		    ;
 
 StatementList       : Statement {($$ = new List<Stmt*>)->Append($1); }
