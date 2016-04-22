@@ -35,14 +35,14 @@ typedef struct
 
 typedef struct
 {
-    Expr * test;
-    Expr * step;
+    Expr * cond;
+    Expr * modexpr;
 } forloop;
 
 typedef struct
 {
-    List<VarDecl*> * decl;
-    List<Stmt*> * stmt; 
+    List<VarDecl*> * decllist;
+    List<Stmt*> * stmtlist; 
 } statementlist; 
  
 // Next, we want to get the exported defines for the token codes and

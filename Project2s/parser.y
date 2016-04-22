@@ -488,32 +488,32 @@ StatementNoScope    : CompoundNoScope {$$ = $1;}
                     ; 
 
 CompoundScope       : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(), new List<Stmt*>());}
-		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.decl,  $2.stmt);}
+		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.decllist,  $2.stmtlist);}
 		    ;
 
 CompoundNoScope     : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(), new List<Stmt*>());}
-		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.decl,  $2.stmt);}
+		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.decllist,  $2.stmtlist);}
 		    ;
 
 StatementList       : Statement 
 		    {
-			$$.decl = new List<VarDecl*>(); 
-			($$.stmt = new List<Stmt*>())->Append($1); 
+			$$.decllist = new List<VarDecl*>(); 
+			($$.stmtlist = new List<Stmt*>())->Append($1); 
 		    }
 		    | VarDecl T_Semicolon
                     {
-			$$.stmt = new List<Stmt*>();
-			($$.decl = new List<VarDecl*>())->Append($1); 
+			($$.decllist = new List<VarDecl*>())->Append($1); 
+			$$.stmtlist = new List<Stmt*>();
 		    }
                     | StatementList Statement 
 		    {
 			$$=$1;
-			$$.stmt->Append($2); 
+			$$.stmtlist->Append($2); 
 		    }
 		    | StatementList VarDecl T_Semicolon 
                     {
 			$$=$1;
-			$$.decl->Append($2); 
+			$$.decllist->Append($2); 
 		    }
                     ;         
 
@@ -534,13 +534,13 @@ SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_
 
 IterationStatement  : T_While T_LeftParen Expression T_RightParen StatementNoScope {$$ = new WhileStmt($3, $5);}
                     | T_Do StatementScope T_While T_LeftParen Expression T_RightParen T_Semicolon 
- 		            {
+ 		    {
 			            $$ = new DoWhileStmt($2, $5); 
-		            }
+		    }
                     | T_For T_LeftParen ForInitStatement ForRestStatement T_RightParen StatementNoScope 
                     {
-			            $$ = new ForStmt($3, $4.test, $4.step, $6); 
-		            }
+			            $$ = new ForStmt($3, $4.cond, $4.modexpr, $6); 
+		    }
                   /*  | T_For T_LeftParen ForInitStatement T_Semicolon T_RightParen StatementNoScope 
                       {
 			$$ = new ForStmt($3, new EmptyExpr(), new EmptyExpr(), $6); 
@@ -560,11 +560,11 @@ ForInitStatement    : T_Semicolon {$$ = new EmptyExpr();}
                     | Expression T_Semicolon {$$ = $1;}
                     ; 
 
-ForRestStatement    : Conditionopt T_Semicolon {$$.test = $1;}
+ForRestStatement    : Conditionopt T_Semicolon {$$.cond = $1;}
                     | Conditionopt T_Semicolon Expression
                     {
-                        $$.test = $1;
-                        $$.step = $3;
+                        $$.cond = $1;
+                        $$.modexpr = $3;
                     }
                     ; 
 
