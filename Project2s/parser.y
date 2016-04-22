@@ -49,6 +49,7 @@ void yyerror(const char *msg); // standard error-handling routine
     FnDecl *fndecl;
     List<Decl*> *declList;
     List<Stmt*> *stmtList; 
+    statementlist smtlist; 
     Type * type;
     TypeQualifier * typequal;
     Expr * expr;
@@ -127,7 +128,7 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <fnargs>      FunctionHeader
 %type <fnargs>      FunctionHeaderParam
 %type <vardecl>     ParamDeclaration
-%type <stmtList>    StatementList 
+%type <smtlist>     StatementList 
 %type <stmt>	    Statement
 %type <stmt>	    SimpleStatement
 %type <stmt>        SelectionStatement
@@ -142,7 +143,6 @@ void yyerror(const char *msg); // standard error-handling routine
 %type <stmtblock>   StatementNoScope
 %type <stmtblock>   CompoundScope
 %type <stmtblock>   CompoundNoScope
-%type <vdclist>     SingleDeclList
 %type <fndecl>      FunctionDefinition
 %nonassoc "If" 
 %nonassoc T_Else 
@@ -355,7 +355,7 @@ UnaryExpression :   PostfixExpression {$$ = $1;}
 PostfixExpression   :   PrimaryExpression {$$ = $1;}
                     |   PostfixExpression T_LeftBracket Expression T_RightBracket {$$ = new ArrayAccess(@1, $1, $3);}
                     |   FunctionCall {$$ = $1;}
-                    |   PostfixExpression T_Dot T_FieldSelect {$$ = new FieldAccess($1, new Identifier(@3, $3));}
+                    |   PostfixExpression T_Dot T_Identifier {$$ = new FieldAccess($1, new Identifier(@3, $3));}
                     |   PostfixExpression T_Inc {$$ = new PostfixExpr($1, new Operator(@2, "++"));}
                     |   PostfixExpression T_Dec {$$ = new PostfixExpr($1, new Operator(@2, "--"));}
                     ;
@@ -469,7 +469,7 @@ Statement 	    : CompoundScope {$$ = $1;}
                     | SimpleStatement {$$ = $1;}
                     ;
 
-StatementScope	    : CompoundNoScope
+StatementScope	    : CompoundNoScope {$$ = $1;}
                     | SimpleStatement
                     {   
                         List<Stmt*> * list = new List<Stmt*>;
@@ -478,7 +478,7 @@ StatementScope	    : CompoundNoScope
                     }
                     ;
 
-StatementNoScope    : CompoundNoScope
+StatementNoScope    : CompoundNoScope {$$ = $1;}
                     | SimpleStatement
                     {   
                         List<Stmt*> * list = new List<Stmt*>;
@@ -488,32 +488,43 @@ StatementNoScope    : CompoundNoScope
                     ; 
 
 CompoundScope       : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(), new List<Stmt*>());}
-		            | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(),  $2);}
-		            | T_LeftBrace SingleDeclList StatementList T_RightBrace {$$ = new StmtBlock($2, $3);}
-                    ;
-
-SingleDeclList  :   VarDecl T_Semicolon {($$=new List<VarDecl*>)->Append($1);}
-                |   SingleDeclList VarDecl T_Semicolon  {($$=$1)->Append($2);}
-                ;
-
-CompoundNoScope     : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(), new List<Stmt*>());}
-		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(),  $2);}
+		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.decl,  $2.stmt);}
 		    ;
 
-StatementList       : Statement {($$ = new List<Stmt*>)->Append($1); }
-                    | StatementList Statement {($$=$1)->Append($2);}
-                    ; 
+CompoundNoScope     : T_LeftBrace T_RightBrace {$$ = new StmtBlock(new List<VarDecl*>(), new List<Stmt*>());}
+		    | T_LeftBrace StatementList T_RightBrace {$$ = new StmtBlock($2.decl,  $2.stmt);}
+		    ;
+
+StatementList       : Statement 
+		    {
+			$$.decl = new List<VarDecl*>(); 
+			($$.stmt = new List<Stmt*>())->Append($1); 
+		    }
+		    | VarDecl T_Semicolon
+                    {
+			$$.stmt = new List<Stmt*>();
+			($$.decl = new List<VarDecl*>())->Append($1); 
+		    }
+                    | StatementList Statement 
+		    {
+			$$=$1;
+			$$.stmt->Append($2); 
+		    }
+		    | StatementList VarDecl T_Semicolon 
+                    {
+			$$=$1;
+			$$.decl->Append($2); 
+		    }
+                    ;         
 
 SimpleStatement     : Expression T_Semicolon {$$ = $1;}
                     | SelectionStatement {$$ = $1;}
-                    /*| SwitchStatement  {$$ = $1;}*/
-                    /*| CaseLabel {$$ = $1;}*/
                     | IterationStatement  {$$ = $1;}
                     | JumpStatement  {$$ = $1;}
                     ;
 
 Conditionopt        :   Expression   {$$ = $1;}
-                    |   {$$ = new EmptyExpr();}
+                    /*|   {$$ = new EmptyExpr();}*/
                     ;
 
 SelectionStatement  : T_If T_LeftParen Expression T_RightParen StatementScope T_Else StatementScope {$$ = new IfStmt($3, $5, $7);}
@@ -596,5 +607,5 @@ FunctionDefinition  : FunctionPrototype CompoundNoScope
 void InitParser()
 {
    PrintDebug("parser", "Initializing parser");
-   yydebug = false;
+   yydebug = true;
 }

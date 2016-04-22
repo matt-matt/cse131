@@ -38,6 +38,12 @@ typedef struct
     Expr * test;
     Expr * step;
 } forloop;
+
+typedef struct
+{
+    List<VarDecl*> * decl;
+    List<Stmt*> * stmt; 
+} statementlist; 
  
 // Next, we want to get the exported defines for the token codes and
 // typedef for YYSTYPE and exported global variable yylval.  These
