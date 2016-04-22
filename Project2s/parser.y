@@ -200,7 +200,7 @@ VarDecl         :   TypeSpecifier T_Identifier    {
 	            |   TypeSpecifier  T_Identifier T_Equal Expression
                 {
                     Identifier *id = new Identifier(@2, $2);
-                    $$ = new VarDecl(id, $1, NULL, $4);
+                    $$ = new VarDecl(id, $1, $4);
                 }
 	            |   TypeQualifier TypeSpecifier T_Identifier T_Equal Expression 
                 {
@@ -607,5 +607,5 @@ FunctionDefinition  : FunctionPrototype CompoundNoScope
 void InitParser()
 {
    PrintDebug("parser", "Initializing parser");
-   yydebug = true;
+   yydebug = false;
 }
