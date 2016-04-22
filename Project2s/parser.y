@@ -261,7 +261,7 @@ FunctionPrototype   :   FunctionHeader T_RightParen
                     }
 		            |   FunctionHeaderParam T_RightParen 
                     {
-                        $$ = new FnDecl($1.id, $1.type, $1.tq, $1.params);
+                        $$ = new FnDecl($1.id, $1.type, $1.params);
                     }
 		            ;
 
@@ -305,7 +305,12 @@ ParamDeclaration    :   TypeSpecifier T_Identifier
                         Identifier *id = new Identifier(@2, $2);
                         $$ = new VarDecl(id, $1);
                     }
-		            ;  
+		    |  TypeSpecifier  T_Identifier T_Equal Expression
+              	    {
+                	    Identifier *id = new Identifier(@2, $2);
+                	    $$ = new VarDecl(id, $1, $4);
+               	    }	
+		    ;  
 
 Expression  :   ConditionalExpression {$$ = $1;}
             |   UnaryExpression AssignmentOperator Expression {$$ = new AssignExpr($1, $2, $3);}
@@ -366,7 +371,7 @@ FunctionCall    :   FunctionCallParams T_RightParen
                 }
                 |   FunctionCallNoParams T_RightParen
                 {
-                    $$ = new Call(@1, NULL, $1.field, NULL);
+                    $$ = new Call(@1, NULL, $1.field, new List<Expr*>());
                 }
                 ;
 
@@ -560,7 +565,11 @@ ForInitStatement    : T_Semicolon {$$ = new EmptyExpr();}
                     | Expression T_Semicolon {$$ = $1;}
                     ; 
 
-ForRestStatement    : Conditionopt T_Semicolon {$$.cond = $1;}
+ForRestStatement    : Conditionopt T_Semicolon 
+		    {
+			$$.cond = $1;
+		        $$.modexpr = new EmptyExpr(); 
+		    }
                     | Conditionopt T_Semicolon Expression
                     {
                         $$.cond = $1;
