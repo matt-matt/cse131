@@ -19,7 +19,7 @@
 #include "scanner.h" // for yylex
 #include "parser.h"
 #include "errors.h"
-
+ 
 void yyerror(const char *msg); // standard error-handling routine
 
 %}
@@ -49,17 +49,36 @@ void yyerror(const char *msg); // standard error-handling routine
     FnDecl *fndecl;
     List<Decl*> *declList;
     List<Stmt*> *stmtList; 
-    statementlist smtlist; 
+    struct
+    {
+        List<VarDecl*> * decllist;
+        List<Stmt*> * stmtlist; 
+    }  smtlist; 
     Type * type;
     TypeQualifier * typequal;
     Expr * expr;
     Operator *op;
-    funcargs fnargs;
-    funcinvoke fninvk;
+    struct
+    {
+        Identifier * id;
+        Type * type;
+        TypeQualifier * tq;
+        List<VarDecl *> * params;
+    } fnargs;
+    struct
+    {
+        Expr * base;
+        Identifier * field;
+        List<Expr *> * args;
+    } fninvk;
     Stmt * stmt; 
     StmtBlock *stmtblock;
     Identifier * wrapper;
-    forloop fl;
+    struct
+    {
+        Expr * cond;
+        Expr * modexpr;
+    }  fl;
     List<VarDecl*> * vdclist;
 }
 
@@ -305,7 +324,13 @@ ParamDeclaration    :   TypeSpecifier T_Identifier
                         Identifier *id = new Identifier(@2, $2);
                         $$ = new VarDecl(id, $1);
                     }
-		    |  TypeSpecifier  T_Identifier T_Equal Expression
+                    |   TypeQualifier TypeSpecifier T_Identifier
+                    {
+                        Identifier *id = new Identifier(@3, $3);
+                        $$ = new VarDecl(id, $2, $1);
+                    }
+
+		            |  TypeSpecifier  T_Identifier T_Equal Expression
               	    {
                 	    Identifier *id = new Identifier(@2, $2);
                 	    $$ = new VarDecl(id, $1, $4);
