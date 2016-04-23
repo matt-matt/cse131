@@ -49,15 +49,18 @@ void yyerror(const char *msg); // standard error-handling routine
     FnDecl *fndecl;
     List<Decl*> *declList;
     List<Stmt*> *stmtList; 
+
     struct
     {
         List<VarDecl*> * decllist;
         List<Stmt*> * stmtlist; 
     }  smtlist; 
+
     Type * type;
     TypeQualifier * typequal;
     Expr * expr;
     Operator *op;
+
     struct
     {
         Identifier * id;
@@ -65,15 +68,18 @@ void yyerror(const char *msg); // standard error-handling routine
         TypeQualifier * tq;
         List<VarDecl *> * params;
     } fnargs;
+
     struct
     {
         Expr * base;
         Identifier * field;
         List<Expr *> * args;
     } fninvk;
+
     Stmt * stmt; 
     StmtBlock *stmtblock;
     Identifier * wrapper;
+
     struct
     {
         Expr * cond;
